@@ -61,15 +61,12 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			? `${contextStr}\n\n${opts.prompt}`
 			: opts.prompt;
 
-		// In "approve" mode, exclude Write/Edit so the CLI denies them.
-		// The plugin captures the intended edit from the stream and shows Accept/Reject.
-		// In "auto-accept" mode, include all tools so the CLI writes directly.
-		const readTools = "Read,Glob,Grep,WebSearch,WebFetch,Bash";
-		const writeTools = "Write,Edit,NotebookEdit";
+		// Always include ALL tools in --allowedTools. Excluding tools causes
+		// the CLI to error in -p mode (non-interactive), not gracefully degrade.
+		// The editApprovalMode setting controls the plugin UI only (Keep/Revert
+		// buttons vs silent "Applied" badge) — the CLI always writes directly.
 		const allowedTools =
-			opts.editApprovalMode === "auto-accept"
-				? `${readTools},${writeTools}`
-				: readTools;
+			"Read,Glob,Grep,Write,Edit,NotebookEdit,WebSearch,WebFetch,Bash";
 
 		const args = [
 			"--output-format",
@@ -333,6 +330,22 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			];
 		}
 
+		// ---- System init event — contains the real CLI session_id
+		if (type === "system") {
+			const sessionId = event.session_id as string | undefined;
+			if (sessionId) {
+				return [
+					{
+						role: "system",
+						content: "",
+						cliSessionId: sessionId,
+						timestamp: Date.now(),
+					},
+				];
+			}
+			return [];
+		}
+
 		// ---- Message lifecycle events — ignored
 		if (
 			type === "message_start" ||
@@ -422,16 +435,25 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
 		// ---- Result summary
 		if (type === "result") {
+			const messages: AgentMessage[] = [];
+			const sessionId = event.session_id as string | undefined;
+			if (sessionId) {
+				messages.push({
+					role: "system",
+					content: "",
+					cliSessionId: sessionId,
+					timestamp: Date.now(),
+				});
+			}
 			const result = (event.result as string) || "";
 			if (result) {
-				return [
-					{
-						role: "assistant",
-						content: result,
-						timestamp: Date.now(),
-					},
-				];
+				messages.push({
+					role: "assistant",
+					content: result,
+					timestamp: Date.now(),
+				});
 			}
+			return messages;
 		}
 
 		return [];

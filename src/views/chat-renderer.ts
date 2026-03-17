@@ -202,7 +202,11 @@ export class ChatRenderer {
 	}
 
 	/**
-	 * Render a file edit block with diff and accept/reject buttons.
+	 * Render a file edit block with diff and Keep/Revert buttons.
+	 *
+	 * The CLI always writes files directly (all tools are in --allowedTools).
+	 * In "approve" mode, the user can review and revert changes.
+	 * In "auto-accept" mode, just show an "Applied" badge.
 	 */
 	private renderFileEdit(
 		message: AgentMessage,
@@ -237,28 +241,40 @@ export class ChatRenderer {
 			});
 		}
 
-		// Action buttons
+		// Action buttons — depend on approval mode
 		const actions = editBlock.createDiv({ cls: "ac-file-edit-actions" });
-		const acceptBtn = actions.createEl("button", {
-			cls: "ac-btn ac-btn-accept",
-			text: "Accept",
-		});
-		acceptBtn.dataset.filePath = message.fileEdit.filePath;
-		acceptBtn.dataset.newContent = message.fileEdit.newContent;
-		acceptBtn.dataset.oldContent = message.fileEdit.oldContent || "";
 
-		const rejectBtn = actions.createEl("button", {
-			cls: "ac-btn ac-btn-reject",
-			text: "Reject",
-		});
-		rejectBtn.addEventListener("click", () => {
-			editBlock.addClass("ac-file-edit-rejected");
-			actions.empty();
+		if (this.settings.editApprovalMode === "auto-accept") {
+			// Auto-accept: just show "Applied" badge
+			editBlock.addClass("ac-file-edit-accepted");
 			actions.createSpan({
 				cls: "ac-file-edit-status",
-				text: "Rejected",
+				text: "Applied",
 			});
-		});
+		} else {
+			// Approve mode: file was already written by CLI, show Keep/Revert
+			const keepBtn = actions.createEl("button", {
+				cls: "ac-btn ac-btn-accept",
+				text: "Keep",
+			});
+			keepBtn.addEventListener("click", () => {
+				editBlock.addClass("ac-file-edit-accepted");
+				actions.empty();
+				actions.createSpan({
+					cls: "ac-file-edit-status",
+					text: "Kept",
+				});
+			});
+
+			const revertBtn = actions.createEl("button", {
+				cls: "ac-btn ac-btn-reject",
+				text: "Revert",
+			});
+			// Store data for the revert handler (delegated in ChatView)
+			revertBtn.dataset.filePath = message.fileEdit.filePath;
+			revertBtn.dataset.oldContent = message.fileEdit.oldContent || "";
+			revertBtn.dataset.newContent = message.fileEdit.newContent;
+		}
 	}
 
 	/**

@@ -23,6 +23,11 @@ export class ChatView extends ItemView {
 		oldContent: string,
 		newContent: string
 	) => Promise<void>;
+	private onRevertEdit: (
+		filePath: string,
+		oldContent: string,
+		newContent: string
+	) => Promise<void>;
 	private onSaveSettings: () => Promise<void>;
 
 	// DOM elements
@@ -54,6 +59,11 @@ export class ChatView extends ItemView {
 			oldContent: string,
 			newContent: string
 		) => Promise<void>,
+		onRevertEdit: (
+			filePath: string,
+			oldContent: string,
+			newContent: string
+		) => Promise<void>,
 		onSaveSettings: () => Promise<void>
 	) {
 		super(leaf);
@@ -61,6 +71,7 @@ export class ChatView extends ItemView {
 		this.settings = settings;
 		this.adapter = adapter;
 		this.onApplyEdit = onApplyEdit;
+		this.onRevertEdit = onRevertEdit;
 		this.onSaveSettings = onSaveSettings;
 		this.renderer = new ChatRenderer(this, "", this.settings);
 		this.slashCommands = adapter.getSlashCommands();
@@ -176,7 +187,7 @@ export class ChatView extends ItemView {
 			cls: "ac-toolbar-select",
 		});
 		this.permSelect.createEl("option", {
-			text: "Approve edits",
+			text: "Review edits",
 			attr: { value: "approve" },
 		});
 		this.permSelect.createEl("option", {
@@ -191,8 +202,8 @@ export class ChatView extends ItemView {
 			await this.onSaveSettings();
 			new Notice(
 				this.permSelect.value === "auto-accept"
-					? "Edits will be applied automatically"
-					: "Edits will require approval"
+					? "Edits will be applied silently"
+					: "Edits will show review controls"
 			);
 		});
 
@@ -254,6 +265,18 @@ export class ChatView extends ItemView {
 		navigator.clipboard.writeText(cmd).then(() => {
 			new Notice(`Copied: ${cmd}`);
 		});
+	}
+
+	/** Update the session ID display when the real CLI session ID arrives. */
+	private updateSessionIdDisplay(cliSessionId: string): void {
+		if (this.sessionIdEl) {
+			const shortId = cliSessionId.slice(0, 8);
+			this.sessionIdEl.textContent = shortId;
+			this.sessionIdEl.setAttribute(
+				"aria-label",
+				`Session: ${cliSessionId}`
+			);
+		}
 	}
 
 	private setupEventListeners(): void {
@@ -334,11 +357,11 @@ export class ChatView extends ItemView {
 			this.handleAutocomplete();
 		});
 
-		// File edit accept buttons (delegated)
+		// File edit revert buttons (delegated)
 		this.messagesContainer.addEventListener("click", (e) => {
 			const target = e.target as HTMLElement;
-			if (target.classList.contains("ac-btn-accept")) {
-				this.handleAcceptEdit(target);
+			if (target.classList.contains("ac-btn-reject")) {
+				this.handleRevertEdit(target);
 			}
 		});
 	}
@@ -456,6 +479,14 @@ export class ChatView extends ItemView {
 			);
 		}
 
+		// System messages carry metadata (e.g. CLI session ID) — not displayed
+		if (message.role === "system") {
+			if (message.cliSessionId) {
+				this.updateSessionIdDisplay(message.cliSessionId);
+			}
+			return;
+		}
+
 		if (message.role === "user") {
 			this.renderUserMessage(message);
 			return;
@@ -465,38 +496,12 @@ export class ChatView extends ItemView {
 			this.setActivity(this.extractActivityText(message));
 
 			if (message.fileEdit) {
-				// File edits get their own block (needs Accept/Reject)
+				// File edits get their own block with Keep/Revert controls.
+				// The CLI already wrote the file — the renderer handles the
+				// button labels based on editApprovalMode.
 				this.streamingMessageEl = null;
 				const el = this.messagesContainer.createDiv();
 				this.renderer.renderFileEditBlock(message, el);
-
-				// Auto-accept: apply immediately
-				if (
-					this.settings.editApprovalMode === "auto-accept" &&
-					message.fileEdit.filePath
-				) {
-					this.onApplyEdit(
-						message.fileEdit.filePath,
-						message.fileEdit.oldContent || "",
-						message.fileEdit.newContent
-					)
-						.then(() => {
-							const status = el.querySelector(
-								".ac-file-edit-actions"
-							);
-							if (status) {
-								status.empty();
-								status.createSpan({
-									cls: "ac-file-edit-status",
-									text: "Applied",
-								});
-							}
-							el.querySelector(".ac-file-edit")?.addClass(
-								"ac-file-edit-accepted"
-							);
-						})
-						.catch(() => {});
-				}
 			} else {
 				// Non-edit tools: render as compact chip inline
 				if (!this.streamingMessageEl) {
@@ -856,34 +861,34 @@ export class ChatView extends ItemView {
 		this.mentionPopup.style.display = "none";
 	}
 
-	private async handleAcceptEdit(button: HTMLElement): Promise<void> {
+	private async handleRevertEdit(button: HTMLElement): Promise<void> {
 		const filePath = button.dataset.filePath;
-		const newContent = button.dataset.newContent;
 		const oldContent = button.dataset.oldContent;
+		const newContent = button.dataset.newContent;
 
-		if (!filePath || !newContent) return;
+		if (!filePath) return;
 
 		try {
-			await this.onApplyEdit(filePath, oldContent || "", newContent);
+			await this.onRevertEdit(filePath, oldContent || "", newContent || "");
 			const editBlock = button.closest(".ac-file-edit");
 			if (editBlock) {
-				editBlock.addClass("ac-file-edit-accepted");
+				editBlock.addClass("ac-file-edit-rejected");
 				const actions = editBlock.querySelector(
 					".ac-file-edit-actions"
 				);
 				if (actions) {
-					actions.innerHTML = "";
+					actions.empty();
 					actions.createSpan({
 						cls: "ac-file-edit-status",
-						text: "Applied",
+						text: "Reverted",
 					});
 				}
 			}
-			new Notice(`Applied edit to ${filePath}`);
+			new Notice(`Reverted edit to ${filePath}`);
 		} catch (err) {
 			const msg =
-				err instanceof Error ? err.message : "Failed to apply edit";
-			new Notice(`Failed to apply edit: ${msg}`);
+				err instanceof Error ? err.message : "Failed to revert edit";
+			new Notice(`Failed to revert: ${msg}`);
 		}
 	}
 

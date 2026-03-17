@@ -77,6 +77,10 @@ export class SessionManager {
 		};
 
 		session.messageQueue.onMessage((msg) => {
+			// Update CLI session ID when the adapter reports it from the stream
+			if (msg.cliSessionId) {
+				session.cliSessionId = msg.cliSessionId;
+			}
 			this.emit({ sessionId: id, type: "message", message: msg });
 		});
 
