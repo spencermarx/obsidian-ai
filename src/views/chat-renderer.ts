@@ -52,6 +52,17 @@ export class ChatRenderer {
 	}
 
 	/**
+	 * Render markdown content directly into an arbitrary container.
+	 * Unlike renderStreamingText, this does not look for .ac-message-body.
+	 */
+	async renderMarkdownInto(
+		content: string,
+		container: HTMLElement
+	): Promise<void> {
+		await this.renderMarkdown(content, container);
+	}
+
+	/**
 	 * Render streaming assistant text — updates in place.
 	 */
 	async renderStreamingText(
