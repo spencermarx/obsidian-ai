@@ -65,6 +65,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 				"--output-format",
 				"stream-json",
 				"--verbose",
+				"--include-partial-messages",
 				"-p",
 				fullPrompt,
 			],
@@ -85,21 +86,33 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 				const trimmed = line.trim();
 				if (!trimmed) continue;
 
+				let event: Record<string, unknown>;
 				try {
-					const event = JSON.parse(trimmed);
+					event = JSON.parse(trimmed);
+				} catch {
+					// Non-JSON line — emit as raw assistant text
+					yield {
+						role: "assistant" as const,
+						content: trimmed,
+						timestamp: Date.now(),
+					};
+					continue;
+				}
+
+				// parseEvent is wrapped in its own try/catch so a single
+				// malformed event never kills the entire stream.
+				try {
 					const messages = this.parseEvent(event);
 					for (const msg of messages) {
 						yield msg;
 					}
-				} catch {
-					// Non-JSON line — emit as raw assistant text
-					if (trimmed) {
-						yield {
-							role: "assistant",
-							content: trimmed,
-							timestamp: Date.now(),
-						};
-					}
+				} catch (err) {
+					console.error(
+						"[agentic-copilot] parseEvent error:",
+						err,
+						"event:",
+						JSON.stringify(event).slice(0, 200)
+					);
 				}
 			}
 		}
