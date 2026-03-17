@@ -13,6 +13,8 @@ export interface Session {
 	messageQueue: MessageQueue;
 	userMessages: AgentMessage[];
 	error?: string;
+	/** Handle for the force-kill timer so we can cancel it. */
+	killTimer?: ReturnType<typeof setTimeout>;
 }
 
 type SessionEventType = "message" | "status" | "error" | "complete";
@@ -35,6 +37,14 @@ export class SessionManager {
 	private sessions = new Map<string, Session>();
 	private listeners: Array<(event: SessionEvent) => void> = [];
 	private nextId = 1;
+	private beforeUnloadHandler: (() => void) | null = null;
+
+	constructor() {
+		// Register a beforeunload handler so we kill child processes
+		// when Obsidian is closed or the window is refreshed.
+		this.beforeUnloadHandler = () => this.destroyAll();
+		window.addEventListener("beforeunload", this.beforeUnloadHandler);
+	}
 
 	/** Listen for session events (messages, status changes, errors). */
 	onEvent(callback: (event: SessionEvent) => void): void {
@@ -125,12 +135,21 @@ export class SessionManager {
 				PATH: getExpandedPath(),
 				...spawnArgs.env,
 			};
+			const useDetached = !isWindows();
 			const proc = spawn(spawnArgs.command, spawnArgs.args, {
 				cwd: context.vaultPath,
 				env: expandedEnv,
 				shell: isWindows() ? shell : true,
 				stdio: ["pipe", "pipe", "pipe"],
+				// Detach on Unix so we get a process group we can kill
+				// as a unit (prevents orphaned agent processes).
+				detached: useDetached,
 			});
+
+			// Prevent the detached child from keeping Obsidian alive
+			if (useDetached) {
+				proc.unref();
+			}
 
 			session.process = proc;
 
@@ -199,20 +218,32 @@ export class SessionManager {
 	/** Terminate and remove a session entirely. */
 	destroySession(sessionId: string): void {
 		const session = this.sessions.get(sessionId);
-		if (session) {
-			this.killProcess(session);
-			session.messageQueue.removeAllListeners();
-			this.setStatus(session, "terminated");
-			this.sessions.delete(sessionId);
+		if (!session) return;
+
+		this.killProcess(session);
+		if (session.killTimer) {
+			clearTimeout(session.killTimer);
+			session.killTimer = undefined;
 		}
+		session.messageQueue.removeAllListeners();
+		this.setStatus(session, "terminated");
+		this.sessions.delete(sessionId);
 	}
 
-	/** Kill all sessions. Called on plugin unload. */
+	/**
+	 * Kill all sessions and remove global handlers.
+	 * Called on plugin unload or window close.
+	 */
 	destroyAll(): void {
 		for (const [id] of this.sessions) {
 			this.destroySession(id);
 		}
 		this.removeAllListeners();
+
+		if (this.beforeUnloadHandler) {
+			window.removeEventListener("beforeunload", this.beforeUnloadHandler);
+			this.beforeUnloadHandler = null;
+		}
 	}
 
 	private async consumeStream(
@@ -228,29 +259,66 @@ export class SessionManager {
 				if (session.process !== proc) break; // Session was restarted
 				session.messageQueue.push(message);
 			}
-		} catch (err) {
+		} catch {
 			// Stream ended or errored — handled by 'close' event
 		}
 	}
 
+	/**
+	 * Kill a session's child process and its entire process group.
+	 *
+	 * Because we spawn with `shell: true`, the CLI binary is a child of
+	 * the shell process. Sending SIGTERM only to the shell may leave the
+	 * actual agent running. We kill the entire process group (negative PID)
+	 * so all descendants are terminated.
+	 */
 	private killProcess(session: Session): void {
-		if (session.process) {
+		// Clear any pending force-kill timer from a previous kill attempt
+		if (session.killTimer) {
+			clearTimeout(session.killTimer);
+			session.killTimer = undefined;
+		}
+
+		if (!session.process) return;
+
+		const proc = session.process;
+		const pid = proc.pid;
+		session.process = null;
+
+		// Try graceful shutdown first
+		try {
+			if (pid && !isWindows()) {
+				// Kill the entire process group so shell children die too
+				process.kill(-pid, "SIGTERM");
+			} else {
+				proc.kill("SIGTERM");
+			}
+		} catch {
+			// Already dead
+			return;
+		}
+
+		// Force kill after 3 seconds if still running
+		session.killTimer = setTimeout(() => {
+			session.killTimer = undefined;
 			try {
-				session.process.kill("SIGTERM");
-				// Force kill after 3 seconds if still running
-				const proc = session.process;
-				setTimeout(() => {
-					try {
-						proc.kill("SIGKILL");
-					} catch {
-						// Already dead
-					}
-				}, 3000);
+				if (pid && !isWindows()) {
+					process.kill(-pid, "SIGKILL");
+				} else {
+					proc.kill("SIGKILL");
+				}
 			} catch {
 				// Already dead
 			}
-			session.process = null;
-		}
+		}, 3000);
+
+		// Clear the timer if the process exits on its own
+		proc.once("close", () => {
+			if (session.killTimer) {
+				clearTimeout(session.killTimer);
+				session.killTimer = undefined;
+			}
+		});
 	}
 
 	private setStatus(session: Session, status: SessionStatus): void {

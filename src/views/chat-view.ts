@@ -129,7 +129,7 @@ export class ChatView extends ItemView {
 		this.inputEl = inputArea.createEl("textarea", {
 			cls: "ac-input",
 			attr: {
-				placeholder: `Message ${this.adapter.displayName}... (/ for commands)`,
+				placeholder: `Ask ${this.adapter.displayName}…`,
 				rows: "1",
 			},
 		});
