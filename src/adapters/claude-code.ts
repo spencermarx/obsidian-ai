@@ -14,11 +14,22 @@ import { formatContextForPrompt } from "../utils/vault-context";
  *
  * Uses `claude` with `--output-format stream-json` for structured streaming
  * output. Each line from stdout is a JSON object with a type field.
+ *
+ * Handles the full event vocabulary including thinking/reasoning blocks,
+ * text content, tool use, and result summaries.
  */
 export class ClaudeCodeAdapter implements AgentAdapter {
 	readonly id = "claude-code";
 	readonly displayName = "Claude Code";
 	readonly binaryName = "claude";
+
+	/**
+	 * Tracks the type of the content block currently being streamed.
+	 * Claude Code emits content_block_start → content_block_delta* →
+	 * content_block_stop for each block. The block type tells us whether
+	 * the deltas are thinking or text.
+	 */
+	private currentBlockType: "thinking" | "text" | null = null;
 
 	async detect(): Promise<boolean> {
 		const path = await whichBinary(this.binaryName);
@@ -62,6 +73,8 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
 	async *parseOutputStream(stdout: Readable): AsyncIterable<AgentMessage> {
 		let buffer = "";
+		// Reset block state for each new invocation
+		this.currentBlockType = null;
 
 		for await (const chunk of stdout) {
 			buffer += chunk.toString();
@@ -74,8 +87,10 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
 				try {
 					const event = JSON.parse(trimmed);
-					const message = this.parseEvent(event);
-					if (message) yield message;
+					const messages = this.parseEvent(event);
+					for (const msg of messages) {
+						yield msg;
+					}
 				} catch {
 					// Non-JSON line — emit as raw assistant text
 					if (trimmed) {
@@ -93,8 +108,10 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		if (buffer.trim()) {
 			try {
 				const event = JSON.parse(buffer.trim());
-				const message = this.parseEvent(event);
-				if (message) yield message;
+				const messages = this.parseEvent(event);
+				for (const msg of messages) {
+					yield msg;
+				}
 			} catch {
 				yield {
 					role: "assistant",
@@ -105,36 +122,168 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		}
 	}
 
-	private parseEvent(event: Record<string, unknown>): AgentMessage | null {
+	/**
+	 * Parse a single stream-json event into zero or more AgentMessages.
+	 *
+	 * Claude Code wraps most events in a `stream_event` envelope:
+	 *   { "type": "stream_event", "event": { ... actual event ... } }
+	 *
+	 * Inner event types:
+	 *   - content_block_start  → signals a new thinking or text block
+	 *   - content_block_delta  → incremental text/thinking content
+	 *   - content_block_stop   → end of current block
+	 *   - message_start/stop   → message lifecycle (ignored)
+	 *   - message_delta        → stop_reason etc. (ignored)
+	 *
+	 * Top-level (non-wrapped) event types:
+	 *   - assistant / text     → full assistant message content
+	 *   - tool_use / tool_result → tool invocation events
+	 *   - result               → final result summary
+	 */
+	private parseEvent(event: Record<string, unknown>): AgentMessage[] {
 		const type = event.type as string | undefined;
 
+		// ---- Unwrap the stream_event envelope if present
+		if (type === "stream_event") {
+			const inner = event.event as Record<string, unknown> | undefined;
+			if (inner) {
+				return this.parseEvent(inner);
+			}
+			return [];
+		}
+
+		// ---- Block lifecycle: track whether we're in a thinking or text block
+		if (type === "content_block_start") {
+			const block = event.content_block as
+				| Record<string, unknown>
+				| undefined;
+			const blockType = block?.type as string | undefined;
+			if (blockType === "thinking") {
+				this.currentBlockType = "thinking";
+			} else if (blockType === "tool_use") {
+				this.currentBlockType = null;
+				// Emit the tool_use start as a tool message
+				const name = (block?.name as string) || "tool";
+				return [
+					{
+						role: "tool" as const,
+						content: `Tool: ${name}`,
+						toolUse: {
+							name,
+							input: "",
+						},
+						timestamp: Date.now(),
+					},
+				];
+			} else {
+				this.currentBlockType = "text";
+			}
+			// content_block_start sometimes includes initial content
+			const initialThinking = block?.thinking as string | undefined;
+			if (initialThinking) {
+				return [
+					{
+						role: "assistant",
+						content: initialThinking,
+						isThinking: true,
+						timestamp: Date.now(),
+					},
+				];
+			}
+			const initialText = block?.text as string | undefined;
+			if (initialText) {
+				return [
+					{
+						role: "assistant",
+						content: initialText,
+						timestamp: Date.now(),
+					},
+				];
+			}
+			return [];
+		}
+
+		if (type === "content_block_stop") {
+			this.currentBlockType = null;
+			return [];
+		}
+
+		// ---- Content deltas: use block type to determine thinking vs text
+		if (type === "content_block_delta") {
+			const delta = event.delta as Record<string, unknown> | undefined;
+			if (!delta) return [];
+
+			const deltaType = delta.type as string | undefined;
+
+			// Signature deltas (end-of-thinking verification) — ignore
+			if (deltaType === "signature_delta") return [];
+
+			// Input JSON deltas (tool input streaming) — ignore for now,
+			// the complete tool_use event will be handled separately
+			if (deltaType === "input_json_delta") return [];
+
+			// Thinking delta
+			if (
+				deltaType === "thinking_delta" ||
+				this.currentBlockType === "thinking"
+			) {
+				const thinking = (delta.thinking as string) || "";
+				if (!thinking) return [];
+				return [
+					{
+						role: "assistant",
+						content: thinking,
+						isThinking: true,
+						timestamp: Date.now(),
+					},
+				];
+			}
+
+			// Text delta
+			const text = (delta.text as string) || "";
+			if (!text) return [];
+			return [
+				{
+					role: "assistant",
+					content: text,
+					timestamp: Date.now(),
+				},
+			];
+		}
+
+		// ---- Message lifecycle events — ignored
+		if (
+			type === "message_start" ||
+			type === "message_stop" ||
+			type === "message_delta"
+		) {
+			return [];
+		}
+
+		// ---- Full assistant messages (non-streaming or message wrappers)
 		if (type === "assistant" || type === "text") {
 			const message = event.message as
 				| Record<string, unknown>
 				| undefined;
-			const content =
-				(message?.content as string) ||
-				(event.content as string) ||
-				"";
-			if (!content) return null;
-			return {
-				role: "assistant",
-				content,
-				timestamp: Date.now(),
-			};
+
+			// The message.content may be an array of content blocks
+			const rawContent = message?.content ?? event.content;
+			if (Array.isArray(rawContent)) {
+				return this.parseContentArray(rawContent);
+			}
+
+			const content = (rawContent as string) || "";
+			if (!content) return [];
+			return [
+				{
+					role: "assistant",
+					content,
+					timestamp: Date.now(),
+				},
+			];
 		}
 
-		if (type === "content_block_delta") {
-			const delta = event.delta as Record<string, unknown> | undefined;
-			const text = (delta?.text as string) || "";
-			if (!text) return null;
-			return {
-				role: "assistant",
-				content: text,
-				timestamp: Date.now(),
-			};
-		}
-
+		// ---- Tool use / tool result
 		if (type === "tool_use" || type === "tool_result") {
 			const name = (event.name as string) || (type as string);
 			const input =
@@ -148,7 +297,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 						? JSON.stringify(event.content)
 						: undefined;
 
-			const message: AgentMessage = {
+			const msg: AgentMessage = {
 				role: "tool",
 				content: `Tool: ${name}`,
 				toolUse: { name, input, output: output as string | undefined },
@@ -176,7 +325,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 					"";
 
 				if (filePath) {
-					message.fileEdit = {
+					msg.fileEdit = {
 						filePath,
 						newContent,
 						oldContent: parsedInput.old_string as
@@ -186,22 +335,59 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 				}
 			}
 
-			return message;
+			return [msg];
 		}
 
-		// Catch-all for result messages
+		// ---- Result summary
 		if (type === "result") {
 			const result = (event.result as string) || "";
 			if (result) {
-				return {
-					role: "assistant",
-					content: result,
-					timestamp: Date.now(),
-				};
+				return [
+					{
+						role: "assistant",
+						content: result,
+						timestamp: Date.now(),
+					},
+				];
 			}
 		}
 
-		return null;
+		return [];
+	}
+
+	/**
+	 * Parse an array of content blocks (from assistant message wrappers).
+	 * Each element may be { type: "thinking", thinking: "..." } or
+	 * { type: "text", text: "..." }.
+	 */
+	private parseContentArray(
+		blocks: Array<Record<string, unknown>>
+	): AgentMessage[] {
+		const messages: AgentMessage[] = [];
+		for (const block of blocks) {
+			const blockType = block.type as string | undefined;
+			if (blockType === "thinking") {
+				const thinking = (block.thinking as string) || "";
+				if (thinking) {
+					messages.push({
+						role: "assistant",
+						content: thinking,
+						isThinking: true,
+						timestamp: Date.now(),
+					});
+				}
+			} else if (blockType === "text") {
+				const text = (block.text as string) || "";
+				if (text) {
+					messages.push({
+						role: "assistant",
+						content: text,
+						timestamp: Date.now(),
+					});
+				}
+			}
+		}
+		return messages;
 	}
 
 	getSlashCommands(): SlashCommand[] {

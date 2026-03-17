@@ -34,6 +34,7 @@ export class ChatView extends ItemView {
 
 	// State
 	private isGenerating = false;
+	private streamingThinkingEl: HTMLElement | null = null;
 	private streamingMessageEl: HTMLElement | null = null;
 	private slashCommands: SlashCommand[] = [];
 
@@ -129,7 +130,7 @@ export class ChatView extends ItemView {
 		this.inputEl = inputArea.createEl("textarea", {
 			cls: "ac-input",
 			attr: {
-				placeholder: `Message ${this.adapter.displayName}... (/ for commands)`,
+				placeholder: `Ask ${this.adapter.displayName}…`,
 				rows: "1",
 			},
 		});
@@ -277,6 +278,7 @@ export class ChatView extends ItemView {
 		this.isGenerating = true;
 		this.sendBtn.style.display = "none";
 		this.stopBtn.style.display = "";
+		this.streamingThinkingEl = null;
 		this.streamingMessageEl = null;
 
 		try {
@@ -304,8 +306,60 @@ export class ChatView extends ItemView {
 			return;
 		}
 
-		// Assistant message — streaming accumulation
+		// Assistant thinking — collapsible reasoning block
+		if (message.role === "assistant" && message.isThinking) {
+			// Finalize any non-thinking assistant stream
+			this.streamingMessageEl = null;
+
+			if (!this.streamingThinkingEl) {
+				this.streamingThinkingEl = this.messagesContainer.createDiv({
+					cls: "ac-message ac-message-thinking",
+				});
+				const details = this.streamingThinkingEl.createEl("details", {
+					cls: "ac-thinking",
+				});
+				details.setAttribute("open", "");
+				const summary = details.createEl("summary", {
+					cls: "ac-thinking-summary",
+				});
+				summary.createSpan({
+					cls: "ac-thinking-icon",
+					text: "Thinking",
+				});
+				summary.createSpan({
+					cls: "ac-thinking-label",
+				});
+				details.createDiv({ cls: "ac-thinking-content" });
+			}
+
+			// Update thinking content
+			const contentEl =
+				this.streamingThinkingEl.querySelector<HTMLElement>(
+					".ac-thinking-content"
+				);
+			if (contentEl) {
+				contentEl.empty();
+				this.renderer.renderStreamingText(
+					message.content,
+					this.streamingThinkingEl
+				);
+			}
+			this.scrollToBottom();
+			return;
+		}
+
+		// Assistant text — streaming accumulation
 		if (message.role === "assistant") {
+			// When text starts, finalize thinking (collapse it)
+			if (this.streamingThinkingEl) {
+				const details =
+					this.streamingThinkingEl.querySelector("details");
+				if (details) {
+					details.removeAttribute("open");
+				}
+				this.streamingThinkingEl = null;
+			}
+
 			if (!this.streamingMessageEl) {
 				// Create a new message bubble
 				this.streamingMessageEl = this.messagesContainer.createDiv({
@@ -368,6 +422,15 @@ export class ChatView extends ItemView {
 
 	private onGenerationComplete(): void {
 		this.isGenerating = false;
+		// Collapse thinking if still open
+		if (this.streamingThinkingEl) {
+			const details =
+				this.streamingThinkingEl.querySelector("details");
+			if (details) {
+				details.removeAttribute("open");
+			}
+			this.streamingThinkingEl = null;
+		}
 		this.streamingMessageEl = null;
 		this.sendBtn.style.display = "";
 		this.stopBtn.style.display = "none";

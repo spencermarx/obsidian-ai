@@ -1,8 +1,49 @@
-import { App, MarkdownView } from "obsidian";
+import { App, MarkdownView, WorkspaceLeaf } from "obsidian";
 import { VaultContext } from "../adapters/types";
 
 /**
+ * Find the most relevant MarkdownView, even when focus is in the sidebar.
+ *
+ * When the user is typing in the chat panel (a sidebar leaf),
+ * `getActiveViewOfType(MarkdownView)` returns null. We fall back to
+ * finding the MarkdownView whose file matches `getActiveFile()`, or
+ * the most recently active MarkdownView in the root split.
+ */
+function findMarkdownView(app: App): MarkdownView | null {
+	// Fast path: if the active view IS a MarkdownView, use it
+	const active = app.workspace.getActiveViewOfType(MarkdownView);
+	if (active) return active;
+
+	// The user is focused elsewhere (e.g. sidebar chat).
+	// Find the MarkdownView for the currently "active" file.
+	const activeFile = app.workspace.getActiveFile();
+
+	let fallback: MarkdownView | null = null;
+
+	app.workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
+		if (!(leaf.view instanceof MarkdownView)) return;
+		const view = leaf.view as MarkdownView;
+
+		// Prefer the leaf whose file matches the active file
+		if (activeFile && view.file && view.file.path === activeFile.path) {
+			fallback = view;
+			return;
+		}
+
+		// Otherwise, keep the first MarkdownView we find as a fallback
+		if (!fallback) {
+			fallback = view;
+		}
+	});
+
+	return fallback;
+}
+
+/**
  * Gather the current vault context: active file, selection, vault path.
+ *
+ * Works reliably even when the user is focused in the sidebar chat panel
+ * rather than the editor pane.
  */
 export function getVaultContext(app: App): VaultContext {
 	const adapter = app.vault.adapter as { getBasePath?: () => string };
@@ -13,15 +54,15 @@ export function getVaultContext(app: App): VaultContext {
 
 	const context: VaultContext = { vaultPath };
 
-	const activeView = app.workspace.getActiveViewOfType(MarkdownView);
-	if (!activeView) return context;
+	const view = findMarkdownView(app);
+	if (!view) return context;
 
-	const file = activeView.file;
+	const file = view.file;
 	if (file) {
 		context.activeFilePath = file.path;
 	}
 
-	const editor = activeView.editor;
+	const editor = view.editor;
 	if (editor) {
 		const selection = editor.getSelection();
 		if (selection) {
