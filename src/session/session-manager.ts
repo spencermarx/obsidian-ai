@@ -1,7 +1,7 @@
 import { spawn, ChildProcess } from "child_process";
 import { AgentAdapter, AgentMessage, VaultContext } from "../adapters/types";
 import { MessageQueue } from "./message-queue";
-import { getShell, isWindows } from "../utils/platform";
+import { getShell, isWindows, getExpandedPath } from "../utils/platform";
 
 export type SessionStatus = "idle" | "running" | "error" | "terminated";
 
@@ -120,9 +120,14 @@ export class SessionManager {
 			this.setStatus(session, "running");
 
 			const shell = getShell();
+			const expandedEnv = {
+				...process.env,
+				PATH: getExpandedPath(),
+				...spawnArgs.env,
+			};
 			const proc = spawn(spawnArgs.command, spawnArgs.args, {
 				cwd: context.vaultPath,
-				env: { ...process.env, ...spawnArgs.env },
+				env: expandedEnv,
 				shell: isWindows() ? shell : true,
 				stdio: ["pipe", "pipe", "pipe"],
 			});
