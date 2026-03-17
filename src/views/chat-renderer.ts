@@ -1,5 +1,6 @@
 import { MarkdownRenderer, Component } from "obsidian";
 import { AgentMessage } from "../adapters/types";
+import type { AgenticCopilotSettings } from "../constants";
 
 /**
  * Renders agent messages into DOM elements using Obsidian's
@@ -8,10 +9,16 @@ import { AgentMessage } from "../adapters/types";
 export class ChatRenderer {
 	private component: Component;
 	private sourcePath: string;
+	private settings: AgenticCopilotSettings;
 
-	constructor(component: Component, sourcePath: string) {
+	constructor(
+		component: Component,
+		sourcePath: string,
+		settings: AgenticCopilotSettings
+	) {
 		this.component = component;
 		this.sourcePath = sourcePath;
+		this.settings = settings;
 	}
 
 	/**
@@ -38,12 +45,10 @@ export class ChatRenderer {
 		// Message body
 		const body = container.createDiv({ cls: "ac-message-body" });
 
-		if (message.toolUse) {
-			this.renderToolUse(message, body);
-		}
-
 		if (message.fileEdit) {
 			this.renderFileEdit(message, body);
+		} else if (message.toolUse) {
+			this.renderToolUse(message, body);
 		}
 
 		if (message.content && message.role !== "tool") {
@@ -74,6 +79,88 @@ export class ChatRenderer {
 			container.createDiv({ cls: "ac-message-body" });
 		body.empty();
 		await this.renderMarkdown(content, body);
+	}
+
+	/**
+	 * Render a compact tool chip (public — used by ChatView for inline tools).
+	 */
+	renderToolChip(message: AgentMessage, container: HTMLElement): void {
+		if (!message.toolUse) return;
+
+		const chip = container.createDiv({ cls: "ac-tool-chip" });
+		chip.createSpan({
+			cls: "ac-tool-chip-icon",
+			text: this.getToolIcon(message.toolUse.name),
+		});
+		chip.createSpan({
+			cls: "ac-tool-chip-name",
+			text: message.toolUse.name,
+		});
+
+		const summary = this.extractToolSummary(
+			message.toolUse.name,
+			message.toolUse.input
+		);
+		if (summary) {
+			chip.createSpan({ cls: "ac-tool-chip-summary", text: summary });
+		}
+	}
+
+	/**
+	 * Render a standalone file edit block (public — used by ChatView).
+	 */
+	renderFileEditBlock(message: AgentMessage, container: HTMLElement): void {
+		if (!message.fileEdit) return;
+		container.addClass("ac-message", "ac-message-tool");
+		const body = container.createDiv({ cls: "ac-message-body" });
+		this.renderFileEdit(message, body);
+	}
+
+	private getToolIcon(toolName: string): string {
+		const icons: Record<string, string> = {
+			Read: "\u{1F4C4}",
+			Glob: "\u{1F50D}",
+			Grep: "\u{1F50E}",
+			LS: "\u{1F4C2}",
+			WebSearch: "\u{1F310}",
+			WebFetch: "\u{1F310}",
+			Bash: "\u{1F4BB}",
+			Write: "\u{270F}\u{FE0F}",
+			Edit: "\u{270F}\u{FE0F}",
+		};
+		return icons[toolName] || "\u{1F527}";
+	}
+
+	private extractToolSummary(toolName: string, input: string): string {
+		try {
+			const parsed = JSON.parse(input);
+			if (toolName === "Read" && parsed.file_path) {
+				return parsed.file_path;
+			}
+			if (toolName === "Glob" && parsed.pattern) {
+				return parsed.pattern;
+			}
+			if (toolName === "Grep" && parsed.pattern) {
+				return `"${parsed.pattern}"`;
+			}
+			if (toolName === "Bash" && parsed.command) {
+				return parsed.command.length > 60
+					? parsed.command.slice(0, 57) + "..."
+					: parsed.command;
+			}
+			if (toolName === "WebSearch" && parsed.query) {
+				return parsed.query;
+			}
+			if (
+				(toolName === "Write" || toolName === "Edit") &&
+				parsed.file_path
+			) {
+				return parsed.file_path;
+			}
+		} catch {
+			// input might not be JSON
+		}
+		return "";
 	}
 
 	/**
