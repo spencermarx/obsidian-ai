@@ -608,11 +608,11 @@
 .ac-input-wrap {
 	display: flex;
 	gap: 4px;
-	align-items: flex-end;
+	align-items: center;
 	background: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
-	padding: 4px 4px 4px 12px;
+	padding: 4px 6px 4px 12px;
 	transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -654,17 +654,18 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 30px;
-	height: 30px;
-	border-radius: 8px;
+	width: 28px;
+	height: 28px;
+	border-radius: 7px;
 	border: none;
 	cursor: pointer;
 	transition: all 0.15s ease;
 	padding: 0;
+	flex-shrink: 0;
 }
 
 .ac-btn-send {
-	background: var(--background-modifier-border);
+	background: transparent;
 	color: var(--text-faint);
 }
 
@@ -683,8 +684,8 @@
 }
 
 .ac-btn-send svg {
-	width: 15px;
-	height: 15px;
+	width: 14px;
+	height: 14px;
 }
 
 .ac-btn-stop {
@@ -697,8 +698,8 @@
 }
 
 .ac-btn-stop svg {
-	width: 14px;
-	height: 14px;
+	width: 13px;
+	height: 13px;
 }
 
 /* ---- Toolbar (below input) ---- */
@@ -706,55 +707,62 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 4px;
+	padding: 0 2px;
+	min-height: 22px;
 }
 
 .ac-toolbar-item {
 	display: flex;
 	align-items: center;
-	gap: 4px;
+	gap: 2px;
 }
 
 .ac-toolbar-icon {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	color: var(--text-faint);
+	width: 14px;
+	height: 14px;
+	opacity: 0.6;
 }
 
 .ac-toolbar-icon svg {
-	width: 12px;
-	height: 12px;
+	width: 11px;
+	height: 11px;
 }
 
 .ac-toolbar-toggle {
 	appearance: none;
 	-webkit-appearance: none;
 	background: transparent;
-	border: 1px solid var(--background-modifier-border);
+	border: none;
 	border-radius: 4px;
-	padding: 1px 7px;
+	padding: 2px 6px;
 	font-size: 11px;
-	color: var(--text-muted);
+	color: var(--text-faint);
 	cursor: pointer;
 	outline: none;
 	font-family: var(--font-interface);
 	transition: all 0.15s ease;
 	white-space: nowrap;
+	line-height: 1;
 }
 
 .ac-toolbar-toggle:hover {
-	color: var(--text-normal);
-	border-color: var(--text-faint);
+	color: var(--text-muted);
+	background: var(--background-modifier-hover);
 }
 
 .ac-toolbar-toggle-auto {
 	color: var(--interactive-accent);
-	border-color: rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.3);
+	opacity: 0.8;
 }
 
 .ac-toolbar-toggle-auto:hover {
 	color: var(--interactive-accent);
-	border-color: var(--interactive-accent);
+	opacity: 1;
+	background: transparent;
 }
 
 .ac-toolbar-hints {
@@ -767,7 +775,7 @@
 	font-size: 10px;
 	color: var(--text-faint);
 	font-family: var(--font-monospace);
-	opacity: 0.7;
+	opacity: 0.5;
 }
 
 /* ---- Buttons (accept/reject) ---- */
