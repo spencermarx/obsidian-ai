@@ -322,7 +322,17 @@ export class ChatView extends ItemView {
 		this.activityBar.style.display = "none";
 	}
 
+	private handleMsgCount = 0;
+
 	private handleMessage(message: AgentMessage): void {
+		this.handleMsgCount++;
+		// [PIPE-8] Log every message arriving at the UI
+		if (this.handleMsgCount <= 10 || this.handleMsgCount % 20 === 0) {
+			console.log(
+				`[agentic-copilot][PIPE-8] ChatView.handleMessage #${this.handleMsgCount}: role=${message.role} thinking=${!!message.isThinking} tool=${!!message.toolUse} len=${message.content.length}`
+			);
+		}
+
 		if (message.role === "user") {
 			this.renderUserMessage(message);
 			return;

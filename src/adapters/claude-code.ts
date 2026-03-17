@@ -74,23 +74,46 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
 	async *parseOutputStream(stdout: Readable): AsyncIterable<AgentMessage> {
 		let buffer = "";
+		let chunkCount = 0;
+		let lineCount = 0;
+		let yieldCount = 0;
 		// Reset block state for each new invocation
 		this.currentBlockType = null;
 
 		for await (const chunk of stdout) {
-			buffer += chunk.toString();
+			chunkCount++;
+			const raw = chunk.toString();
+			// [PIPE-2] Log raw stdout data (first 3 chunks fully, then just sizes)
+			if (chunkCount <= 3) {
+				console.log(
+					`[agentic-copilot][PIPE-2] stdout chunk #${chunkCount} (${raw.length} bytes):`,
+					raw.slice(0, 300)
+				);
+			} else if (chunkCount % 50 === 0) {
+				console.log(
+					`[agentic-copilot][PIPE-2] stdout chunk #${chunkCount} (${raw.length} bytes)`
+				);
+			}
+
+			buffer += raw;
 			const lines = buffer.split("\n");
 			buffer = lines.pop() || "";
 
 			for (const line of lines) {
 				const trimmed = line.trim();
 				if (!trimmed) continue;
+				lineCount++;
 
 				let event: Record<string, unknown>;
 				try {
 					event = JSON.parse(trimmed);
 				} catch {
-					// Non-JSON line — emit as raw assistant text
+					// [PIPE-3] Non-JSON line
+					console.log(
+						`[agentic-copilot][PIPE-3] non-JSON line #${lineCount}:`,
+						trimmed.slice(0, 150)
+					);
+					yieldCount++;
 					yield {
 						role: "assistant" as const,
 						content: trimmed,
@@ -99,16 +122,37 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 					continue;
 				}
 
+				// [PIPE-3] Log the event type
+				const evtType = (event.type as string) || "unknown";
+				const innerType =
+					evtType === "stream_event"
+						? (
+								event.event as Record<string, unknown>
+							)?.type || "?"
+						: "";
+				if (lineCount <= 10 || lineCount % 20 === 0) {
+					console.log(
+						`[agentic-copilot][PIPE-3] JSON line #${lineCount}: type=${evtType}${innerType ? ` inner=${innerType}` : ""}`
+					);
+				}
+
 				// parseEvent is wrapped in its own try/catch so a single
 				// malformed event never kills the entire stream.
 				try {
 					const messages = this.parseEvent(event);
+					// [PIPE-4] Log parseEvent results
 					for (const msg of messages) {
+						yieldCount++;
+						if (yieldCount <= 5 || yieldCount % 20 === 0) {
+							console.log(
+								`[agentic-copilot][PIPE-4] yield #${yieldCount}: role=${msg.role} thinking=${!!msg.isThinking} len=${msg.content.length}`
+							);
+						}
 						yield msg;
 					}
 				} catch (err) {
 					console.error(
-						"[agentic-copilot] parseEvent error:",
+						"[agentic-copilot][PIPE-4] parseEvent error:",
 						err,
 						"event:",
 						JSON.stringify(event).slice(0, 200)
@@ -116,6 +160,10 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 				}
 			}
 		}
+
+		console.log(
+			`[agentic-copilot][PIPE-2] stdout ended: ${chunkCount} chunks, ${lineCount} lines, ${yieldCount} messages yielded`
+		);
 
 		// Flush remaining buffer
 		if (buffer.trim()) {

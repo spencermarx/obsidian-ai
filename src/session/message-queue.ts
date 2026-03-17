@@ -24,9 +24,19 @@ export class MessageQueue {
 		this.listeners = [];
 	}
 
+	private pushCount = 0;
+
 	/** Push a parsed message from the adapter's stream parser. */
 	push(message: AgentMessage): void {
+		this.pushCount++;
 		const msgIsThinking = !!message.isThinking;
+
+		// [PIPE-5] Log push calls
+		if (this.pushCount <= 5 || this.pushCount % 20 === 0) {
+			console.log(
+				`[agentic-copilot][PIPE-5] MQ.push #${this.pushCount}: role=${message.role} thinking=${msgIsThinking} len=${message.content.length} listeners=${this.listeners.length}`
+			);
+		}
 
 		// If this is a text/thinking delta for the same role AND same
 		// thinking state, accumulate into the current buffer.

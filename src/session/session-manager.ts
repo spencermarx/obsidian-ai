@@ -387,7 +387,20 @@ export class SessionManager {
 		});
 	}
 
+	private emitCount = 0;
+
 	private emit(event: SessionEvent): void {
+		this.emitCount++;
+		// [PIPE-7] Log session manager emit
+		if (
+			event.type === "message" &&
+			(this.emitCount <= 5 || this.emitCount % 20 === 0)
+		) {
+			const msg = event.message;
+			console.log(
+				`[agentic-copilot][PIPE-7] SM.emit #${this.emitCount}: type=${event.type} role=${msg?.role} thinking=${!!msg?.isThinking} listeners=${this.listeners.length}`
+			);
+		}
 		for (const listener of this.listeners) {
 			listener(event);
 		}
