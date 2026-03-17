@@ -39,7 +39,7 @@ export class ChatView extends ItemView {
 	private slashPopup!: HTMLElement;
 	private mentionPopup!: HTMLElement;
 	private sessionIdEl!: HTMLElement;
-	private permSelect!: HTMLSelectElement;
+	private permToggle!: HTMLButtonElement;
 	private activityBar: HTMLElement | null = null;
 	private activityText: HTMLElement | null = null;
 
@@ -179,29 +179,35 @@ export class ChatView extends ItemView {
 		// ── Toolbar below input ──
 		const toolbar = inputArea.createDiv({ cls: "ac-toolbar" });
 
-		// Permission mode dropdown
+		// Permission mode toggle
 		const permWrap = toolbar.createDiv({ cls: "ac-toolbar-item" });
 		const permIcon = permWrap.createSpan({ cls: "ac-toolbar-icon" });
 		setIcon(permIcon, "shield");
-		this.permSelect = permWrap.createEl("select", {
-			cls: "ac-toolbar-select",
+		this.permToggle = permWrap.createEl("button", {
+			cls: "ac-toolbar-toggle",
+			text:
+				this.settings.editApprovalMode === "approve"
+					? "Review edits"
+					: "Auto-accept",
 		});
-		this.permSelect.createEl("option", {
-			text: "Review edits",
-			attr: { value: "approve" },
-		});
-		this.permSelect.createEl("option", {
-			text: "Auto-accept",
-			attr: { value: "auto-accept" },
-		});
-		this.permSelect.value = this.settings.editApprovalMode;
-		this.permSelect.addEventListener("change", async () => {
-			this.settings.editApprovalMode = this.permSelect.value as
-				| "approve"
-				| "auto-accept";
+		if (this.settings.editApprovalMode === "auto-accept") {
+			this.permToggle.addClass("ac-toolbar-toggle-auto");
+		}
+		this.permToggle.addEventListener("click", async () => {
+			const newMode =
+				this.settings.editApprovalMode === "approve"
+					? "auto-accept"
+					: "approve";
+			this.settings.editApprovalMode = newMode;
+			this.permToggle.textContent =
+				newMode === "approve" ? "Review edits" : "Auto-accept";
+			this.permToggle.toggleClass(
+				"ac-toolbar-toggle-auto",
+				newMode === "auto-accept"
+			);
 			await this.onSaveSettings();
 			new Notice(
-				this.permSelect.value === "auto-accept"
+				newMode === "auto-accept"
 					? "Edits will be applied silently"
 					: "Edits will show review controls"
 			);
@@ -351,10 +357,11 @@ export class ChatView extends ItemView {
 			}
 		});
 
-		// Input: auto-resize + autocomplete
+		// Input: auto-resize + autocomplete + send button state
 		this.inputEl.addEventListener("input", () => {
 			this.autoResizeInput();
 			this.handleAutocomplete();
+			this.updateSendButtonState();
 		});
 
 		// File edit revert buttons (delegated)
@@ -401,6 +408,7 @@ export class ChatView extends ItemView {
 		// Clear input
 		this.inputEl.value = "";
 		this.autoResizeInput();
+		this.updateSendButtonState();
 		this.hideAllPopups();
 
 		// Gather vault context
@@ -688,6 +696,14 @@ export class ChatView extends ItemView {
 			Math.min(this.inputEl.scrollHeight, 200) + "px";
 	}
 
+	private updateSendButtonState(): void {
+		if (this.inputEl.value.trim()) {
+			this.sendBtn.addClass("ac-btn-send-active");
+		} else {
+			this.sendBtn.removeClass("ac-btn-send-active");
+		}
+	}
+
 	// ── Autocomplete ──
 
 	private handleAutocomplete(): void {
@@ -749,8 +765,18 @@ export class ChatView extends ItemView {
 			setIcon(iconEl, "file-text");
 			item.createSpan({
 				cls: "ac-popup-item-text",
-				text: file.path,
+				text: file.name,
 			});
+			const dirPath = file.path.slice(
+				0,
+				file.path.length - file.name.length - 1
+			);
+			if (dirPath) {
+				item.createSpan({
+					cls: "ac-popup-item-desc",
+					text: dirPath,
+				});
+			}
 
 			item.addEventListener("click", () => {
 				this.insertMention("@", query, file.path);
