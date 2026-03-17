@@ -63,8 +63,8 @@ export class SessionManager {
 		this.listeners = [];
 	}
 
-	/** Create a new session with the given adapter. */
-	createSession(adapter: AgentAdapter): string {
+	/** Create a new session with the given adapter, optionally resuming an existing CLI session. */
+	createSession(adapter: AgentAdapter, resumeCliSessionId?: string): string {
 		const id = `session-${this.nextId++}`;
 		const session: Session = {
 			id,
@@ -73,7 +73,7 @@ export class SessionManager {
 			process: null,
 			messageQueue: new MessageQueue(),
 			userMessages: [],
-			cliSessionId: crypto.randomUUID(),
+			cliSessionId: resumeCliSessionId || crypto.randomUUID(),
 		};
 
 		session.messageQueue.onMessage((msg) => {

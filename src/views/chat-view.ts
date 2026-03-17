@@ -38,7 +38,9 @@ export class ChatView extends ItemView {
 	private statusEl!: HTMLElement;
 	private slashPopup!: HTMLElement;
 	private mentionPopup!: HTMLElement;
-	private sessionIdEl!: HTMLElement;
+	private sessionChip!: HTMLElement;
+	private sessionChipId!: HTMLElement;
+	private sessionChipIcon!: HTMLElement;
 	private permToggle!: HTMLButtonElement;
 	private activityBar: HTMLElement | null = null;
 	private activityText: HTMLElement | null = null;
@@ -130,15 +132,31 @@ export class ChatView extends ItemView {
 			text: this.adapter.displayName,
 		});
 
-		// Right: session ID with copy
-		const headerRight = header.createDiv({ cls: "ac-header-right" });
-		this.sessionIdEl = headerRight.createSpan({ cls: "ac-session-id" });
-		const copyBtn = headerRight.createEl("button", {
-			cls: "ac-session-copy clickable-icon",
-			attr: { "aria-label": "Copy session ID for CLI" },
+		// Right: session chip (clickable — copies resume command)
+		this.sessionChip = header.createDiv({
+			cls: "ac-session-chip",
+			attr: {
+				"aria-label":
+					"Click to copy terminal command to continue this session",
+				role: "button",
+				tabindex: "0",
+			},
 		});
-		setIcon(copyBtn, "copy");
-		copyBtn.addEventListener("click", () => this.copySessionId());
+		this.sessionChip.style.display = "none"; // hidden until real CLI ID arrives
+		const chipTermIcon = this.sessionChip.createSpan({
+			cls: "ac-session-chip-terminal",
+		});
+		setIcon(chipTermIcon, "terminal");
+		this.sessionChipId = this.sessionChip.createSpan({
+			cls: "ac-session-chip-id",
+		});
+		this.sessionChipIcon = this.sessionChip.createSpan({
+			cls: "ac-session-chip-copy",
+		});
+		setIcon(this.sessionChipIcon, "copy");
+		this.sessionChip.addEventListener("click", () =>
+			this.copySessionId()
+		);
 
 		// ── Messages area ──
 		this.messagesContainer = container.createDiv({ cls: "ac-messages" });
@@ -247,19 +265,84 @@ export class ChatView extends ItemView {
 				});
 			}
 		}
+
+		// Resume session link
+		const resumeSection = welcome.createDiv({ cls: "ac-resume-section" });
+		this.buildResumeLink(resumeSection);
 	}
 
-	private setupSession(): void {
-		this.sessionId = this.sessionManager.createSession(this.adapter);
-		// Display the CLI session ID in the header
-		const session = this.sessionManager.getSession(this.sessionId);
-		if (session && this.sessionIdEl) {
-			const shortId = session.cliSessionId.slice(0, 8);
-			this.sessionIdEl.textContent = shortId;
-			this.sessionIdEl.setAttribute(
-				"aria-label",
-				`Session: ${session.cliSessionId}`
+	private buildResumeLink(container: HTMLElement): void {
+		container.empty();
+		const link = container.createEl("button", {
+			cls: "ac-resume-link",
+			text: "Resume a previous session",
+		});
+		link.addEventListener("click", () => {
+			this.showResumeForm(container);
+		});
+	}
+
+	private showResumeForm(container: HTMLElement): void {
+		container.empty();
+		const form = container.createDiv({ cls: "ac-resume-form" });
+		const input = form.createEl("input", {
+			cls: "ac-resume-input",
+			attr: {
+				type: "text",
+				placeholder: "Paste session ID…",
+				spellcheck: "false",
+			},
+		});
+		const btn = form.createEl("button", {
+			cls: "ac-resume-btn",
+			text: "Resume",
+		});
+
+		const doResume = () => {
+			let sessionId = input.value.trim();
+			if (!sessionId) return;
+			// Support pasting full command: "claude --resume <id>" or "claude -r <id>"
+			const cmdMatch = sessionId.match(
+				/claude\s+(?:--resume|-r)\s+(\S+)/
 			);
+			if (cmdMatch) sessionId = cmdMatch[1];
+			this.resumeSession(sessionId);
+		};
+
+		btn.addEventListener("click", doResume);
+		input.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				doResume();
+			}
+			if (e.key === "Escape") {
+				this.buildResumeLink(container);
+			}
+		});
+		input.focus();
+	}
+
+	private resumeSession(cliSessionId: string): void {
+		// Destroy current session and create a new one with the given CLI session ID
+		if (this.sessionId) {
+			this.sessionManager.destroySession(this.sessionId);
+		}
+		this.clearMessages();
+		this.setupSession(cliSessionId);
+		this.updateStatus("idle");
+		new Notice(`Resuming session ${cliSessionId.slice(0, 8)}…`);
+	}
+
+	private setupSession(resumeSessionId?: string): void {
+		this.sessionId = this.sessionManager.createSession(
+			this.adapter,
+			resumeSessionId
+		);
+		// Don't show the chip yet — wait for the real CLI session ID
+		// to arrive via the system init event (updateSessionIdDisplay).
+		// If resuming, show immediately since the ID is already known.
+		if (resumeSessionId) {
+			this.updateSessionIdDisplay(resumeSessionId);
 		}
 	}
 
@@ -267,20 +350,30 @@ export class ChatView extends ItemView {
 		if (!this.sessionId) return;
 		const session = this.sessionManager.getSession(this.sessionId);
 		if (!session) return;
-		const cmd = `claude -r ${session.cliSessionId}`;
+		const cmd = `claude --resume ${session.cliSessionId}`;
 		navigator.clipboard.writeText(cmd).then(() => {
-			new Notice(`Copied: ${cmd}`);
+			// Show checkmark feedback
+			this.sessionChipIcon.empty();
+			setIcon(this.sessionChipIcon, "check");
+			this.sessionChip.addClass("ac-session-chip-copied");
+			new Notice("Resume command copied to clipboard");
+			setTimeout(() => {
+				this.sessionChipIcon.empty();
+				setIcon(this.sessionChipIcon, "copy");
+				this.sessionChip.removeClass("ac-session-chip-copied");
+			}, 1500);
 		});
 	}
 
 	/** Update the session ID display when the real CLI session ID arrives. */
 	private updateSessionIdDisplay(cliSessionId: string): void {
-		if (this.sessionIdEl) {
+		if (this.sessionChip) {
 			const shortId = cliSessionId.slice(0, 8);
-			this.sessionIdEl.textContent = shortId;
-			this.sessionIdEl.setAttribute(
+			this.sessionChipId.textContent = shortId;
+			this.sessionChip.style.display = "";
+			this.sessionChip.setAttribute(
 				"aria-label",
-				`Session: ${cliSessionId}`
+				`Session ${cliSessionId} — click to copy resume command`
 			);
 		}
 	}
