@@ -31,6 +31,8 @@ export class ChatView extends ItemView {
 	private stopBtn!: HTMLButtonElement;
 	private statusEl!: HTMLElement;
 	private slashPopup!: HTMLElement;
+	private activityBar!: HTMLElement;
+	private activityText!: HTMLElement;
 
 	// State
 	private isGenerating = false;
@@ -119,6 +121,21 @@ export class ChatView extends ItemView {
 
 		// Welcome message
 		this.renderWelcome();
+
+		// Activity indicator bar (hidden by default)
+		this.activityBar = container.createDiv({ cls: "ac-activity-bar" });
+		this.activityBar.style.display = "none";
+		const activityDot = this.activityBar.createSpan({
+			cls: "ac-activity-dot",
+		});
+		// Three bouncing dots for the animation
+		for (let i = 0; i < 3; i++) {
+			activityDot.createSpan({ cls: "ac-activity-bounce" });
+		}
+		this.activityText = this.activityBar.createSpan({
+			cls: "ac-activity-text",
+			text: "Working…",
+		});
 
 		// Slash command popup (hidden by default)
 		this.slashPopup = container.createDiv({ cls: "ac-slash-popup" });
@@ -280,6 +297,7 @@ export class ChatView extends ItemView {
 		this.stopBtn.style.display = "";
 		this.streamingThinkingEl = null;
 		this.streamingMessageEl = null;
+		this.setActivity("Starting…");
 
 		try {
 			await this.sessionManager.sendPrompt(
@@ -295,6 +313,15 @@ export class ChatView extends ItemView {
 		}
 	}
 
+	private setActivity(text: string): void {
+		this.activityBar.style.display = "";
+		this.activityText.setText(text);
+	}
+
+	private clearActivity(): void {
+		this.activityBar.style.display = "none";
+	}
+
 	private handleMessage(message: AgentMessage): void {
 		if (message.role === "user") {
 			this.renderUserMessage(message);
@@ -302,12 +329,16 @@ export class ChatView extends ItemView {
 		}
 
 		if (message.role === "tool") {
+			// Show tool activity
+			const toolName = message.toolUse?.name || "tool";
+			this.setActivity(`Using ${toolName}…`);
 			this.renderToolMessage(message);
 			return;
 		}
 
 		// Assistant thinking — collapsible reasoning block
 		if (message.role === "assistant" && message.isThinking) {
+			this.setActivity("Thinking…");
 			// Finalize any non-thinking assistant stream
 			this.streamingMessageEl = null;
 
@@ -332,16 +363,16 @@ export class ChatView extends ItemView {
 				details.createDiv({ cls: "ac-thinking-content" });
 			}
 
-			// Update thinking content
+			// Render directly into .ac-thinking-content (not .ac-message-body)
 			const contentEl =
 				this.streamingThinkingEl.querySelector<HTMLElement>(
 					".ac-thinking-content"
 				);
 			if (contentEl) {
 				contentEl.empty();
-				this.renderer.renderStreamingText(
+				this.renderer.renderMarkdownInto(
 					message.content,
-					this.streamingThinkingEl
+					contentEl
 				);
 			}
 			this.scrollToBottom();
@@ -350,6 +381,7 @@ export class ChatView extends ItemView {
 
 		// Assistant text — streaming accumulation
 		if (message.role === "assistant") {
+			this.setActivity("Responding…");
 			// When text starts, finalize thinking (collapse it)
 			if (this.streamingThinkingEl) {
 				const details =
@@ -422,6 +454,7 @@ export class ChatView extends ItemView {
 
 	private onGenerationComplete(): void {
 		this.isGenerating = false;
+		this.clearActivity();
 		// Collapse thinking if still open
 		if (this.streamingThinkingEl) {
 			const details =

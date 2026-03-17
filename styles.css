@@ -1,13 +1,13 @@
 /* ============================================================
    Agentic Copilot — Obsidian Plugin Styles
-   Uses Obsidian CSS variables for automatic theme support.
+   Modern, clean chat UI using Obsidian CSS variables.
 
    Layout: the sidebar .view-content extends behind Obsidian's
    fixed-position status bar (~28px). We account for this by
    adding bottom padding to the input area so nothing is clipped.
    ============================================================ */
 
-/* ---- Reset: ensure border-box on all plugin elements ---- */
+/* ---- Reset ---- */
 .ac-chat-container,
 .ac-chat-container *,
 .ac-onboarding,
@@ -23,22 +23,23 @@
 	width: 100%;
 	min-width: 0;
 	overflow: hidden;
+	background: var(--background-primary);
 }
 
 /* ---- Header ---- */
 .ac-chat-header {
 	display: flex;
 	align-items: center;
-	padding: 8px 12px;
+	padding: 10px 16px;
 	border-bottom: 1px solid var(--background-modifier-border);
-	background: var(--background-secondary);
+	background: var(--background-primary);
 	flex-shrink: 0;
 }
 
 .ac-status {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 }
 
 .ac-status-dot {
@@ -46,14 +47,16 @@
 	height: 8px;
 	border-radius: 50%;
 	flex-shrink: 0;
+	transition: background-color 0.3s ease;
 }
 
 .ac-status-idle {
-	background-color: var(--text-muted);
+	background-color: var(--text-faint);
 }
 
 .ac-status-running {
-	background-color: var(--interactive-accent);
+	background-color: #10b981;
+	box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
 	animation: ac-pulse 1.5s ease-in-out infinite;
 }
 
@@ -68,17 +71,12 @@
 .ac-status-text {
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
-	font-weight: 500;
+	font-weight: 600;
 }
 
 @keyframes ac-pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.4;
-	}
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.4; }
 }
 
 /* ---- Messages Area ---- */
@@ -86,10 +84,10 @@
 	flex: 1 1 0%;
 	overflow-y: auto;
 	overflow-x: hidden;
-	padding: 12px;
+	padding: 16px;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 4px;
 	min-width: 0;
 	min-height: 0;
 }
@@ -101,41 +99,51 @@
 	align-items: center;
 	justify-content: center;
 	text-align: center;
-	padding: 24px 16px;
+	padding: 32px 16px;
 	color: var(--text-muted);
 	min-width: 0;
+	flex: 1;
 }
 
 .ac-welcome h3 {
-	margin: 0 0 8px 0;
+	margin: 0 0 6px 0;
 	color: var(--text-normal);
+	font-size: 1.1em;
+	font-weight: 600;
 }
 
-.ac-welcome p {
-	margin: 0 0 16px 0;
+.ac-welcome > p {
+	margin: 0 0 20px 0;
 	font-size: var(--font-ui-small);
 	overflow-wrap: break-word;
 	word-break: break-word;
+	color: var(--text-faint);
+	max-width: 300px;
+	line-height: 1.5;
 }
 
 .ac-welcome-commands {
 	width: 100%;
-	max-width: 320px;
+	max-width: 300px;
 	text-align: left;
 }
 
 .ac-welcome-commands-label {
-	font-size: var(--font-ui-smaller);
+	font-size: 11px;
 	color: var(--text-faint);
-	margin-bottom: 4px !important;
+	margin-bottom: 6px !important;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	font-weight: 500;
 }
 
 .ac-welcome-cmd {
 	display: flex;
-	gap: 8px;
-	padding: 4px 8px;
+	gap: 10px;
+	padding: 6px 10px;
 	border-radius: var(--radius-s);
 	font-size: var(--font-ui-small);
+	transition: background 0.15s ease;
 }
 
 .ac-welcome-cmd:hover {
@@ -147,6 +155,7 @@
 	color: var(--interactive-accent);
 	white-space: nowrap;
 	flex-shrink: 0;
+	font-size: 12px;
 }
 
 .ac-welcome-cmd-desc {
@@ -158,8 +167,8 @@
 
 /* ---- Message Bubbles ---- */
 .ac-message {
-	padding: 8px 12px;
-	border-radius: var(--radius-m);
+	padding: 10px 14px;
+	border-radius: 12px;
 	max-width: 100%;
 	min-width: 0;
 	overflow-wrap: break-word;
@@ -167,37 +176,52 @@
 	overflow: hidden;
 }
 
+/* -- User Message -- */
 .ac-message-user {
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
 	align-self: flex-end;
 	max-width: 85%;
+	border-radius: 12px 12px 4px 12px;
+	margin-top: 8px;
 }
 
-.ac-message-user .ac-message-role,
-.ac-message-user .ac-message-time {
-	color: var(--text-on-accent);
-	opacity: 0.8;
+.ac-message-user .ac-message-header {
+	display: none;
 }
 
+.ac-message-user .ac-message-body {
+	font-size: 13px;
+}
+
+.ac-message-user .ac-message-body p {
+	margin: 0;
+}
+
+/* -- Assistant Message -- */
 .ac-message-assistant {
-	background: var(--background-secondary);
+	background: transparent;
 	color: var(--text-normal);
 	align-self: flex-start;
+	padding: 10px 2px;
 }
 
+/* -- Tool Message -- */
 .ac-message-tool {
-	background: var(--background-secondary-alt);
+	background: transparent;
 	color: var(--text-normal);
 	align-self: flex-start;
-	border-left: 3px solid var(--interactive-accent);
+	padding: 2px;
 }
 
+/* -- Error Message -- */
 .ac-message-error {
-	background: var(--background-modifier-error);
+	background: rgba(var(--background-modifier-error-rgb, 255, 0, 0), 0.08);
 	color: var(--text-error);
 	align-self: stretch;
 	border: 1px solid var(--text-error);
+	border-radius: 8px;
+	margin-top: 8px;
 }
 
 .ac-message-header {
@@ -208,7 +232,7 @@
 }
 
 .ac-message-role {
-	font-size: var(--font-ui-smaller);
+	font-size: 11px;
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
@@ -216,13 +240,13 @@
 }
 
 .ac-message-time {
-	font-size: var(--font-ui-smaller);
+	font-size: 10px;
 	color: var(--text-faint);
 }
 
 .ac-message-body {
-	font-size: var(--font-ui-small);
-	line-height: 1.5;
+	font-size: 13px;
+	line-height: 1.6;
 	min-width: 0;
 	overflow-wrap: break-word;
 	word-break: break-word;
@@ -237,38 +261,48 @@
 }
 
 .ac-message-body pre {
-	background: var(--background-primary);
-	border-radius: var(--radius-s);
-	padding: 8px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 10px 12px;
 	overflow-x: auto;
 	white-space: pre-wrap;
 	word-break: break-all;
-	font-size: var(--font-ui-smaller);
+	font-size: 12px;
+	margin: 8px 0;
+}
+
+.ac-message-body code:not(pre code) {
+	background: var(--background-secondary);
+	border-radius: 4px;
+	padding: 1px 5px;
+	font-size: 12px;
 }
 
 /* ---- Thinking / Reasoning (Collapsible) ---- */
 .ac-message-thinking {
 	background: transparent;
-	padding: 0;
+	padding: 2px;
 	border: none;
 }
 
 .ac-thinking {
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
+	border-radius: 8px;
 	overflow: hidden;
 }
 
 .ac-thinking-summary {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	padding: 6px 10px;
+	gap: 8px;
+	padding: 8px 12px;
 	cursor: pointer;
-	background: var(--background-secondary-alt);
-	font-size: var(--font-ui-small);
+	background: var(--background-secondary);
+	font-size: 12px;
 	user-select: none;
 	color: var(--text-muted);
+	transition: background 0.15s ease;
 }
 
 .ac-thinking-summary:hover {
@@ -277,14 +311,14 @@
 
 .ac-thinking-icon {
 	font-weight: 600;
-	font-size: var(--font-ui-smaller);
+	font-size: 11px;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
 	color: var(--text-faint);
 }
 
 .ac-thinking[open] .ac-thinking-icon::after {
-	content: " ...";
+	content: " …";
 	animation: ac-pulse 1.5s ease-in-out infinite;
 }
 
@@ -293,42 +327,51 @@
 }
 
 .ac-thinking-label {
-	font-size: var(--font-ui-smaller);
+	font-size: 11px;
 	color: var(--text-faint);
 }
 
 .ac-thinking-content {
-	padding: 8px 10px;
+	padding: 10px 12px;
 	border-top: 1px solid var(--background-modifier-border);
-	font-size: var(--font-ui-smaller);
+	font-size: 12px;
 	line-height: 1.5;
 	color: var(--text-muted);
 	max-height: 300px;
 	overflow-y: auto;
 }
 
+.ac-thinking-content p:first-child {
+	margin-top: 0;
+}
+
+.ac-thinking-content p:last-child {
+	margin-bottom: 0;
+}
+
 .ac-thinking-content .ac-message-body {
-	font-size: var(--font-ui-smaller);
+	font-size: 12px;
 	color: var(--text-muted);
 }
 
 /* ---- Tool Use (Collapsible) ---- */
 .ac-tool-use {
-	margin: 4px 0;
+	margin: 2px 0;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
+	border-radius: 8px;
 	overflow: hidden;
 }
 
 .ac-tool-summary {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	padding: 6px 10px;
+	gap: 8px;
+	padding: 8px 12px;
 	cursor: pointer;
 	background: var(--background-secondary);
-	font-size: var(--font-ui-small);
+	font-size: 12px;
 	user-select: none;
+	transition: background 0.15s ease;
 }
 
 .ac-tool-summary:hover {
@@ -336,12 +379,14 @@
 }
 
 .ac-tool-icon {
-	font-size: 14px;
+	font-size: 13px;
+	opacity: 0.7;
 }
 
 .ac-tool-name {
 	font-family: var(--font-monospace);
 	font-weight: 500;
+	font-size: 12px;
 	color: var(--interactive-accent);
 	overflow-wrap: break-word;
 	word-break: break-all;
@@ -349,7 +394,7 @@
 }
 
 .ac-tool-content {
-	padding: 8px 10px;
+	padding: 10px 12px;
 	border-top: 1px solid var(--background-modifier-border);
 }
 
@@ -362,13 +407,15 @@
 }
 
 .ac-tool-section strong {
-	font-size: var(--font-ui-smaller);
+	font-size: 11px;
 	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
 }
 
 .ac-tool-section pre {
 	margin: 4px 0 0 0;
-	font-size: var(--font-ui-smaller);
+	font-size: 11px;
 	white-space: pre-wrap;
 	word-break: break-all;
 	overflow-x: auto;
@@ -376,31 +423,33 @@
 
 /* ---- File Edit Blocks ---- */
 .ac-file-edit {
-	margin: 8px 0;
+	margin: 6px 0;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
+	border-radius: 8px;
 	overflow: hidden;
 }
 
 .ac-file-edit-header {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	padding: 8px 10px;
+	gap: 8px;
+	padding: 8px 12px;
 	background: var(--background-secondary);
 	border-bottom: 1px solid var(--background-modifier-border);
-	font-size: var(--font-ui-small);
+	font-size: 12px;
 	min-width: 0;
 }
 
 .ac-file-edit-icon {
-	font-size: 14px;
+	font-size: 13px;
 	flex-shrink: 0;
+	opacity: 0.7;
 }
 
 .ac-file-edit-path {
 	font-family: var(--font-monospace);
 	font-weight: 500;
+	font-size: 12px;
 	overflow-wrap: break-word;
 	word-break: break-all;
 	min-width: 0;
@@ -413,18 +462,18 @@
 
 .ac-diff {
 	margin: 0;
-	padding: 8px;
-	font-size: var(--font-ui-smaller);
-	line-height: 1.4;
+	padding: 8px 12px;
+	font-size: 11px;
+	line-height: 1.5;
 }
 
 .ac-diff-removed {
-	background: hsla(0, 60%, 50%, 0.15);
+	background: hsla(0, 60%, 50%, 0.12);
 	color: var(--text-error);
 }
 
 .ac-diff-added {
-	background: hsla(120, 60%, 40%, 0.15);
+	background: hsla(120, 60%, 40%, 0.12);
 	color: var(--text-success, var(--interactive-accent));
 }
 
@@ -435,7 +484,7 @@
 .ac-file-edit-actions {
 	display: flex;
 	gap: 8px;
-	padding: 8px 10px;
+	padding: 8px 12px;
 	border-top: 1px solid var(--background-modifier-border);
 	background: var(--background-secondary);
 }
@@ -449,21 +498,67 @@
 }
 
 .ac-file-edit-status {
-	font-size: var(--font-ui-small);
+	font-size: 12px;
 	font-weight: 500;
 	color: var(--text-muted);
 }
 
-/* ---- Input Area ----
-   The bottom padding (36px) accounts for Obsidian's fixed-position
-   status bar that overlaps the sidebar content. Without this, the
-   textarea and send button are partially hidden behind the status bar.
-   ---- */
+/* ---- Activity Indicator ---- */
+.ac-activity-bar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 16px;
+	background: var(--background-primary);
+	flex-shrink: 0;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.ac-activity-dot {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.ac-activity-bounce {
+	display: inline-block;
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background: var(--interactive-accent);
+	animation: ac-bounce 1.2s ease-in-out infinite;
+}
+
+.ac-activity-bounce:nth-child(2) {
+	animation-delay: 0.15s;
+}
+
+.ac-activity-bounce:nth-child(3) {
+	animation-delay: 0.3s;
+}
+
+@keyframes ac-bounce {
+	0%, 60%, 100% {
+		transform: translateY(0);
+		opacity: 0.4;
+	}
+	30% {
+		transform: translateY(-4px);
+		opacity: 1;
+	}
+}
+
+.ac-activity-text {
+	font-size: 12px;
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+/* ---- Input Area ---- */
 .ac-input-area {
 	display: flex;
 	gap: 8px;
-	padding: 8px 12px 36px 12px;
-	border-top: 1px solid var(--background-modifier-border);
+	padding: 12px 16px 36px 16px;
 	background: var(--background-primary);
 	align-items: flex-end;
 	flex-shrink: 0;
@@ -472,23 +567,25 @@
 .ac-input {
 	flex: 1;
 	min-width: 0;
-	min-height: 36px;
+	min-height: 40px;
 	max-height: 200px;
-	padding: 8px 10px;
+	padding: 10px 14px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	background: var(--background-primary);
+	border-radius: 12px;
+	background: var(--background-secondary);
 	color: var(--text-normal);
 	font-family: var(--font-interface);
-	font-size: var(--font-ui-small);
+	font-size: 13px;
 	resize: none;
 	outline: none;
-	line-height: 1.4;
+	line-height: 1.5;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .ac-input:focus {
 	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.15);
+	background: var(--background-primary);
 }
 
 .ac-input::placeholder {
@@ -503,13 +600,13 @@
 
 /* ---- Buttons ---- */
 .ac-btn {
-	padding: 6px 12px;
-	border-radius: var(--radius-s);
+	padding: 8px 16px;
+	border-radius: 10px;
 	border: none;
 	cursor: pointer;
-	font-size: var(--font-ui-small);
+	font-size: 13px;
 	font-weight: 500;
-	transition: background 0.15s ease;
+	transition: all 0.15s ease;
 }
 
 .ac-btn-send {
@@ -519,6 +616,11 @@
 
 .ac-btn-send:hover {
 	background: var(--interactive-accent-hover);
+	transform: translateY(-1px);
+}
+
+.ac-btn-send:active {
+	transform: translateY(0);
 }
 
 .ac-btn-stop {
@@ -533,6 +635,9 @@
 .ac-btn-accept {
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
+	font-size: 12px;
+	padding: 5px 12px;
+	border-radius: 6px;
 }
 
 .ac-btn-accept:hover {
@@ -542,6 +647,9 @@
 .ac-btn-reject {
 	background: var(--background-modifier-border);
 	color: var(--text-muted);
+	font-size: 12px;
+	padding: 5px 12px;
+	border-radius: 6px;
 }
 
 .ac-btn-reject:hover {
@@ -561,20 +669,29 @@
 .ac-slash-popup {
 	position: relative;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
+	border-radius: 10px;
 	background: var(--background-primary);
-	box-shadow: var(--shadow-s);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 	max-height: 200px;
 	overflow-y: auto;
-	margin: 0 12px;
+	margin: 0 16px;
 }
 
 .ac-slash-item {
 	display: flex;
 	gap: 10px;
-	padding: 8px 12px;
+	padding: 8px 14px;
 	cursor: pointer;
-	font-size: var(--font-ui-small);
+	font-size: 12px;
+	transition: background 0.1s ease;
+}
+
+.ac-slash-item:first-child {
+	border-radius: 10px 10px 0 0;
+}
+
+.ac-slash-item:last-child {
+	border-radius: 0 0 10px 10px;
 }
 
 .ac-slash-item:hover {
@@ -587,6 +704,7 @@
 	font-weight: 500;
 	white-space: nowrap;
 	flex-shrink: 0;
+	font-size: 12px;
 }
 
 .ac-slash-desc {
@@ -622,10 +740,15 @@
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: 12px 16px;
+	padding: 14px 18px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
+	border-radius: 10px;
 	background: var(--background-secondary);
+	transition: border-color 0.15s ease;
+}
+
+.ac-agent-card:hover {
+	border-color: var(--interactive-accent);
 }
 
 .ac-agent-info h3 {
@@ -639,7 +762,7 @@
 }
 
 .ac-agent-path {
-	font-size: var(--font-ui-smaller);
+	font-size: 11px;
 	color: var(--text-faint);
 	display: block;
 	margin-top: 2px;
@@ -654,9 +777,9 @@
 }
 
 .ac-install-item {
-	padding: 12px 16px;
+	padding: 14px 18px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
+	border-radius: 10px;
 	background: var(--background-secondary);
 }
 
@@ -672,12 +795,13 @@
 
 .ac-install-item pre {
 	margin: 0;
-	padding: 8px;
-	border-radius: var(--radius-s);
+	padding: 10px 12px;
+	border-radius: 8px;
 	background: var(--background-primary);
 	overflow-x: auto;
 	white-space: pre-wrap;
 	word-break: break-all;
+	font-size: 12px;
 }
 
 .ac-install-note {
@@ -704,6 +828,24 @@
 }
 
 .ac-detected-path {
-	font-size: var(--font-ui-smaller);
+	font-size: 11px;
 	color: var(--text-faint);
+}
+
+/* ---- Scrollbar styling ---- */
+.ac-messages::-webkit-scrollbar {
+	width: 6px;
+}
+
+.ac-messages::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.ac-messages::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+}
+
+.ac-messages::-webkit-scrollbar-thumb:hover {
+	background: var(--text-faint);
 }
