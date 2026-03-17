@@ -125,16 +125,32 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 	/**
 	 * Parse a single stream-json event into zero or more AgentMessages.
 	 *
-	 * Claude Code stream-json event types:
+	 * Claude Code wraps most events in a `stream_event` envelope:
+	 *   { "type": "stream_event", "event": { ... actual event ... } }
+	 *
+	 * Inner event types:
 	 *   - content_block_start  → signals a new thinking or text block
 	 *   - content_block_delta  → incremental text/thinking content
 	 *   - content_block_stop   → end of current block
+	 *   - message_start/stop   → message lifecycle (ignored)
+	 *   - message_delta        → stop_reason etc. (ignored)
+	 *
+	 * Top-level (non-wrapped) event types:
 	 *   - assistant / text     → full assistant message content
 	 *   - tool_use / tool_result → tool invocation events
 	 *   - result               → final result summary
 	 */
 	private parseEvent(event: Record<string, unknown>): AgentMessage[] {
 		const type = event.type as string | undefined;
+
+		// ---- Unwrap the stream_event envelope if present
+		if (type === "stream_event") {
+			const inner = event.event as Record<string, unknown> | undefined;
+			if (inner) {
+				return this.parseEvent(inner);
+			}
+			return [];
+		}
 
 		// ---- Block lifecycle: track whether we're in a thinking or text block
 		if (type === "content_block_start") {
@@ -144,6 +160,21 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			const blockType = block?.type as string | undefined;
 			if (blockType === "thinking") {
 				this.currentBlockType = "thinking";
+			} else if (blockType === "tool_use") {
+				this.currentBlockType = null;
+				// Emit the tool_use start as a tool message
+				const name = (block?.name as string) || "tool";
+				return [
+					{
+						role: "tool" as const,
+						content: `Tool: ${name}`,
+						toolUse: {
+							name,
+							input: "",
+						},
+						timestamp: Date.now(),
+					},
+				];
 			} else {
 				this.currentBlockType = "text";
 			}
@@ -184,6 +215,13 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
 			const deltaType = delta.type as string | undefined;
 
+			// Signature deltas (end-of-thinking verification) — ignore
+			if (deltaType === "signature_delta") return [];
+
+			// Input JSON deltas (tool input streaming) — ignore for now,
+			// the complete tool_use event will be handled separately
+			if (deltaType === "input_json_delta") return [];
+
 			// Thinking delta
 			if (
 				deltaType === "thinking_delta" ||
@@ -211,6 +249,15 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 					timestamp: Date.now(),
 				},
 			];
+		}
+
+		// ---- Message lifecycle events — ignored
+		if (
+			type === "message_start" ||
+			type === "message_stop" ||
+			type === "message_delta"
+		) {
+			return [];
 		}
 
 		// ---- Full assistant messages (non-streaming or message wrappers)
