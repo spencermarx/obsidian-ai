@@ -282,14 +282,17 @@ export class ChatView extends ItemView {
 		this.stopBtn.style.display = "";
 		this.streamingThinkingEl = null;
 		this.streamingMessageEl = null;
-		this.setActivity("Starting…");
 
 		try {
+			// sendPrompt emits the user message synchronously, which renders
+			// the user bubble first. Only THEN do we show the activity indicator
+			// so it appears below the user message in the chat flow.
 			await this.sessionManager.sendPrompt(
 				this.sessionId,
 				text,
 				context
 			);
+			this.setActivity("Starting…");
 		} catch (err) {
 			const msg =
 				err instanceof Error ? err.message : "Failed to send message";
