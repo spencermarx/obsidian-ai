@@ -49,6 +49,8 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		prompt: string;
 		context: VaultContext;
 		cwd: string;
+		editApprovalMode?: "approve" | "auto-accept";
+		cliSessionId?: string;
 	}): SpawnArgs {
 		const contextStr = formatContextForPrompt(opts.context, {
 			includeFile: true,
@@ -59,18 +61,32 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			? `${contextStr}\n\n${opts.prompt}`
 			: opts.prompt;
 
+		// Always include ALL tools in --allowedTools. Excluding tools causes
+		// the CLI to error in -p mode (non-interactive), not gracefully degrade.
+		// The editApprovalMode setting controls the plugin UI only (Keep/Revert
+		// buttons vs silent "Applied" badge) — the CLI always writes directly.
+		const allowedTools =
+			"Read,Glob,Grep,Write,Edit,NotebookEdit,WebSearch,WebFetch,Bash";
+
+		const args = [
+			"--output-format",
+			"stream-json",
+			"--verbose",
+			"--include-partial-messages",
+			"--allowedTools",
+			allowedTools,
+		];
+
+		// Session persistence for multi-turn and CLI resumption
+		if (opts.cliSessionId) {
+			args.push("--session-id", opts.cliSessionId);
+		}
+
+		args.push("-p", fullPrompt);
+
 		return {
 			command: this.binaryName,
-			args: [
-				"--output-format",
-				"stream-json",
-				"--verbose",
-				"--include-partial-messages",
-				"--allowedTools",
-				"Read,Glob,Grep,Write,Edit,NotebookEdit,WebSearch,WebFetch,Bash",
-				"-p",
-				fullPrompt,
-			],
+			args,
 		};
 	}
 
@@ -314,6 +330,22 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			];
 		}
 
+		// ---- System init event — contains the real CLI session_id
+		if (type === "system") {
+			const sessionId = event.session_id as string | undefined;
+			if (sessionId) {
+				return [
+					{
+						role: "system",
+						content: "",
+						cliSessionId: sessionId,
+						timestamp: Date.now(),
+					},
+				];
+			}
+			return [];
+		}
+
 		// ---- Message lifecycle events — ignored
 		if (
 			type === "message_start" ||
@@ -403,16 +435,25 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
 		// ---- Result summary
 		if (type === "result") {
+			const messages: AgentMessage[] = [];
+			const sessionId = event.session_id as string | undefined;
+			if (sessionId) {
+				messages.push({
+					role: "system",
+					content: "",
+					cliSessionId: sessionId,
+					timestamp: Date.now(),
+				});
+			}
 			const result = (event.result as string) || "";
 			if (result) {
-				return [
-					{
-						role: "assistant",
-						content: result,
-						timestamp: Date.now(),
-					},
-				];
+				messages.push({
+					role: "assistant",
+					content: result,
+					timestamp: Date.now(),
+				});
 			}
+			return messages;
 		}
 
 		return [];

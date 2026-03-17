@@ -1,4 +1,4 @@
-import { MarkdownRenderer, Component } from "obsidian";
+import { MarkdownRenderer, Component, setIcon } from "obsidian";
 import { AgentMessage } from "../adapters/types";
 import type { AgenticCopilotSettings } from "../constants";
 
@@ -88,10 +88,8 @@ export class ChatRenderer {
 		if (!message.toolUse) return;
 
 		const chip = container.createDiv({ cls: "ac-tool-chip" });
-		chip.createSpan({
-			cls: "ac-tool-chip-icon",
-			text: this.getToolIcon(message.toolUse.name),
-		});
+		const iconEl = chip.createSpan({ cls: "ac-tool-chip-icon" });
+		setIcon(iconEl, this.getToolIconName(message.toolUse.name));
 		chip.createSpan({
 			cls: "ac-tool-chip-name",
 			text: message.toolUse.name,
@@ -116,19 +114,20 @@ export class ChatRenderer {
 		this.renderFileEdit(message, body);
 	}
 
-	private getToolIcon(toolName: string): string {
+	private getToolIconName(toolName: string): string {
 		const icons: Record<string, string> = {
-			Read: "\u{1F4C4}",
-			Glob: "\u{1F50D}",
-			Grep: "\u{1F50E}",
-			LS: "\u{1F4C2}",
-			WebSearch: "\u{1F310}",
-			WebFetch: "\u{1F310}",
-			Bash: "\u{1F4BB}",
-			Write: "\u{270F}\u{FE0F}",
-			Edit: "\u{270F}\u{FE0F}",
+			Read: "file-text",
+			Glob: "search",
+			Grep: "search",
+			LS: "folder",
+			WebSearch: "globe",
+			WebFetch: "globe",
+			Bash: "terminal",
+			Write: "pencil",
+			Edit: "pencil",
+			NotebookEdit: "pencil",
 		};
-		return icons[toolName] || "\u{1F527}";
+		return icons[toolName] || "wrench";
 	}
 
 	private extractToolSummary(toolName: string, input: string): string {
@@ -203,7 +202,11 @@ export class ChatRenderer {
 	}
 
 	/**
-	 * Render a file edit block with diff and accept/reject buttons.
+	 * Render a file edit block with diff and Keep/Revert buttons.
+	 *
+	 * The CLI always writes files directly (all tools are in --allowedTools).
+	 * In "approve" mode, the user can review and revert changes.
+	 * In "auto-accept" mode, just show an "Applied" badge.
 	 */
 	private renderFileEdit(
 		message: AgentMessage,
@@ -214,7 +217,8 @@ export class ChatRenderer {
 		const editBlock = container.createDiv({ cls: "ac-file-edit" });
 
 		const header = editBlock.createDiv({ cls: "ac-file-edit-header" });
-		header.createSpan({ cls: "ac-file-edit-icon", text: "\u{1F4DD}" });
+		const editIconEl = header.createSpan({ cls: "ac-file-edit-icon" });
+		setIcon(editIconEl, "file-pen-line");
 		header.createSpan({
 			cls: "ac-file-edit-path",
 			text: message.fileEdit.filePath,
@@ -237,28 +241,40 @@ export class ChatRenderer {
 			});
 		}
 
-		// Action buttons
+		// Action buttons — depend on approval mode
 		const actions = editBlock.createDiv({ cls: "ac-file-edit-actions" });
-		const acceptBtn = actions.createEl("button", {
-			cls: "ac-btn ac-btn-accept",
-			text: "Accept",
-		});
-		acceptBtn.dataset.filePath = message.fileEdit.filePath;
-		acceptBtn.dataset.newContent = message.fileEdit.newContent;
-		acceptBtn.dataset.oldContent = message.fileEdit.oldContent || "";
 
-		const rejectBtn = actions.createEl("button", {
-			cls: "ac-btn ac-btn-reject",
-			text: "Reject",
-		});
-		rejectBtn.addEventListener("click", () => {
-			editBlock.addClass("ac-file-edit-rejected");
-			actions.empty();
+		if (this.settings.editApprovalMode === "auto-accept") {
+			// Auto-accept: just show "Applied" badge
+			editBlock.addClass("ac-file-edit-accepted");
 			actions.createSpan({
 				cls: "ac-file-edit-status",
-				text: "Rejected",
+				text: "Applied",
 			});
-		});
+		} else {
+			// Approve mode: file was already written by CLI, show Keep/Revert
+			const keepBtn = actions.createEl("button", {
+				cls: "ac-btn ac-btn-accept",
+				text: "Keep",
+			});
+			keepBtn.addEventListener("click", () => {
+				editBlock.addClass("ac-file-edit-accepted");
+				actions.empty();
+				actions.createSpan({
+					cls: "ac-file-edit-status",
+					text: "Kept",
+				});
+			});
+
+			const revertBtn = actions.createEl("button", {
+				cls: "ac-btn ac-btn-reject",
+				text: "Revert",
+			});
+			// Store data for the revert handler (delegated in ChatView)
+			revertBtn.dataset.filePath = message.fileEdit.filePath;
+			revertBtn.dataset.oldContent = message.fileEdit.oldContent || "";
+			revertBtn.dataset.newContent = message.fileEdit.newContent;
+		}
 	}
 
 	/**

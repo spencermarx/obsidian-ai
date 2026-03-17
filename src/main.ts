@@ -60,6 +60,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 					this.settings,
 					this.activeAdapter,
 					this.applyFileEdit.bind(this),
+					this.revertFileEdit.bind(this),
 					this.saveSettings.bind(this)
 				);
 			} else {
@@ -491,6 +492,45 @@ export default class AgenticCopilotPlugin extends Plugin {
 		new Notice(
 			`Opening ${this.activeAdapter.displayName} in terminal…`
 		);
+	}
+
+	/**
+	 * Revert a file edit that the CLI already applied.
+	 * For Edit tool: replaces newContent back with oldContent in the file.
+	 * For Write tool (no oldContent): warns that full revert isn't possible.
+	 */
+	private async revertFileEdit(
+		filePath: string,
+		oldContent: string,
+		newContent: string
+	): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		if (!(file instanceof TFile)) {
+			throw new Error(`File not found: ${filePath}`);
+		}
+
+		const currentContent = await this.app.vault.read(file);
+
+		if (oldContent) {
+			// Edit tool: swap newContent back to oldContent
+			if (currentContent.includes(newContent)) {
+				const restored = currentContent.replace(
+					newContent,
+					oldContent
+				);
+				await this.app.vault.modify(file, restored);
+			} else {
+				throw new Error(
+					"File has been modified since the edit — cannot auto-revert"
+				);
+			}
+		} else if (newContent) {
+			// Write tool (full file replacement) — we don't have the original
+			// content, so we can't perfectly revert. Warn the user.
+			throw new Error(
+				"Cannot revert a full file write — original content not available. Use Ctrl+Z in the editor."
+			);
+		}
 	}
 
 	/**

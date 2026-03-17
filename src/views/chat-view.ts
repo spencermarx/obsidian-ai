@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, TFile, setIcon } from "obsidian";
 import { CHAT_VIEW_TYPE } from "../constants";
 import { AgentAdapter, AgentMessage, SlashCommand } from "../adapters/types";
 import { SessionManager, SessionStatus } from "../session/session-manager";
@@ -23,6 +23,11 @@ export class ChatView extends ItemView {
 		oldContent: string,
 		newContent: string
 	) => Promise<void>;
+	private onRevertEdit: (
+		filePath: string,
+		oldContent: string,
+		newContent: string
+	) => Promise<void>;
 	private onSaveSettings: () => Promise<void>;
 
 	// DOM elements
@@ -32,6 +37,9 @@ export class ChatView extends ItemView {
 	private stopBtn!: HTMLButtonElement;
 	private statusEl!: HTMLElement;
 	private slashPopup!: HTMLElement;
+	private mentionPopup!: HTMLElement;
+	private sessionIdEl!: HTMLElement;
+	private permSelect!: HTMLSelectElement;
 	private activityBar: HTMLElement | null = null;
 	private activityText: HTMLElement | null = null;
 
@@ -51,6 +59,11 @@ export class ChatView extends ItemView {
 			oldContent: string,
 			newContent: string
 		) => Promise<void>,
+		onRevertEdit: (
+			filePath: string,
+			oldContent: string,
+			newContent: string
+		) => Promise<void>,
 		onSaveSettings: () => Promise<void>
 	) {
 		super(leaf);
@@ -58,6 +71,7 @@ export class ChatView extends ItemView {
 		this.settings = settings;
 		this.adapter = adapter;
 		this.onApplyEdit = onApplyEdit;
+		this.onRevertEdit = onRevertEdit;
 		this.onSaveSettings = onSaveSettings;
 		this.renderer = new ChatRenderer(this, "", this.settings);
 		this.slashCommands = adapter.getSlashCommands();
@@ -101,101 +115,119 @@ export class ChatView extends ItemView {
 		this.setupSession();
 		this.clearMessages();
 		this.updateStatus("idle");
-		// Trigger header update by toggling the view state
 		(this.leaf as unknown as { updateHeader?: () => void }).updateHeader?.();
 	}
 
 	private buildUI(container: HTMLElement): void {
-		// Header bar
+		// ── Header bar ──
 		const header = container.createDiv({ cls: "ac-chat-header" });
+
+		// Left: status
 		this.statusEl = header.createDiv({ cls: "ac-status" });
-		this.statusEl.createSpan({
-			cls: "ac-status-dot ac-status-idle",
-		});
+		this.statusEl.createSpan({ cls: "ac-status-dot ac-status-idle" });
 		this.statusEl.createSpan({
 			cls: "ac-status-text",
 			text: this.adapter.displayName,
 		});
 
-		// Permission dropdown (right side of header)
+		// Right: session ID with copy
 		const headerRight = header.createDiv({ cls: "ac-header-right" });
-		const permSelect = headerRight.createEl("select", {
-			cls: "ac-permission-select",
+		this.sessionIdEl = headerRight.createSpan({ cls: "ac-session-id" });
+		const copyBtn = headerRight.createEl("button", {
+			cls: "ac-session-copy clickable-icon",
+			attr: { "aria-label": "Copy session ID for CLI" },
 		});
-		permSelect.createEl("option", {
-			text: "Approve edits",
-			attr: { value: "approve" },
-		});
-		permSelect.createEl("option", {
-			text: "Auto-accept",
-			attr: { value: "auto-accept" },
-		});
-		permSelect.value = this.settings.editApprovalMode;
-		permSelect.addEventListener("change", async () => {
-			this.settings.editApprovalMode = permSelect.value as
-				| "approve"
-				| "auto-accept";
-			await this.onSaveSettings();
-			new Notice(
-				permSelect.value === "auto-accept"
-					? "Edits will be applied automatically"
-					: "Edits will require approval"
-			);
-		});
+		setIcon(copyBtn, "copy");
+		copyBtn.addEventListener("click", () => this.copySessionId());
 
-		// Messages area
-		this.messagesContainer = container.createDiv({
-			cls: "ac-messages",
-		});
-
-		// Welcome message
+		// ── Messages area ──
+		this.messagesContainer = container.createDiv({ cls: "ac-messages" });
 		this.renderWelcome();
 
-		// Slash command popup (hidden by default)
+		// ── Autocomplete popups (hidden by default) ──
 		this.slashPopup = container.createDiv({ cls: "ac-slash-popup" });
 		this.slashPopup.style.display = "none";
+		this.mentionPopup = container.createDiv({ cls: "ac-mention-popup" });
+		this.mentionPopup.style.display = "none";
 
-		// Input area
+		// ── Input area ──
 		const inputArea = container.createDiv({ cls: "ac-input-area" });
+		const inputWrap = inputArea.createDiv({ cls: "ac-input-wrap" });
 
-		this.inputEl = inputArea.createEl("textarea", {
+		this.inputEl = inputWrap.createEl("textarea", {
 			cls: "ac-input",
 			attr: {
-				placeholder: `Ask ${this.adapter.displayName}…`,
+				placeholder: `Message ${this.adapter.displayName}…`,
 				rows: "1",
 			},
 		});
 
-		const btnGroup = inputArea.createDiv({ cls: "ac-btn-group" });
-
+		const btnGroup = inputWrap.createDiv({ cls: "ac-btn-group" });
 		this.sendBtn = btnGroup.createEl("button", {
-			cls: "ac-btn ac-btn-send",
-			text: "Send",
+			cls: "ac-btn ac-btn-send clickable-icon",
+			attr: { "aria-label": "Send" },
 		});
+		setIcon(this.sendBtn, "arrow-up");
 
 		this.stopBtn = btnGroup.createEl("button", {
-			cls: "ac-btn ac-btn-stop",
-			text: "Stop",
+			cls: "ac-btn ac-btn-stop clickable-icon",
+			attr: { "aria-label": "Stop" },
 		});
+		setIcon(this.stopBtn, "square");
 		this.stopBtn.style.display = "none";
+
+		// ── Toolbar below input ──
+		const toolbar = inputArea.createDiv({ cls: "ac-toolbar" });
+
+		// Permission mode dropdown
+		const permWrap = toolbar.createDiv({ cls: "ac-toolbar-item" });
+		const permIcon = permWrap.createSpan({ cls: "ac-toolbar-icon" });
+		setIcon(permIcon, "shield");
+		this.permSelect = permWrap.createEl("select", {
+			cls: "ac-toolbar-select",
+		});
+		this.permSelect.createEl("option", {
+			text: "Review edits",
+			attr: { value: "approve" },
+		});
+		this.permSelect.createEl("option", {
+			text: "Auto-accept",
+			attr: { value: "auto-accept" },
+		});
+		this.permSelect.value = this.settings.editApprovalMode;
+		this.permSelect.addEventListener("change", async () => {
+			this.settings.editApprovalMode = this.permSelect.value as
+				| "approve"
+				| "auto-accept";
+			await this.onSaveSettings();
+			new Notice(
+				this.permSelect.value === "auto-accept"
+					? "Edits will be applied silently"
+					: "Edits will show review controls"
+			);
+		});
+
+		// Hint text for shortcuts
+		const hints = toolbar.createDiv({ cls: "ac-toolbar-hints" });
+		hints.createSpan({ cls: "ac-toolbar-hint", text: "/ commands" });
+		hints.createSpan({ cls: "ac-toolbar-hint", text: "@ files" });
+		hints.createSpan({ cls: "ac-toolbar-hint", text: "# tags" });
 	}
 
 	private renderWelcome(): void {
 		const welcome = this.messagesContainer.createDiv({
 			cls: "ac-welcome",
 		});
-		welcome.createEl("h3", {
-			text: `Agentic Copilot`,
-		});
+		welcome.createEl("h3", { text: "Agentic Copilot" });
 		welcome.createEl("p", {
-			text: `Connected to ${this.adapter.displayName}. Ask anything about your vault, or use / to see available commands.`,
+			text: `Connected to ${this.adapter.displayName}. Ask anything about your vault.`,
 		});
 
 		if (this.slashCommands.length > 0) {
 			const cmdList = welcome.createDiv({ cls: "ac-welcome-commands" });
 			cmdList.createEl("p", {
 				cls: "ac-welcome-commands-label",
-				text: "Available commands:",
+				text: "Commands",
 			});
 			for (const cmd of this.slashCommands.slice(0, 5)) {
 				const item = cmdList.createDiv({ cls: "ac-welcome-cmd" });
@@ -213,6 +245,38 @@ export class ChatView extends ItemView {
 
 	private setupSession(): void {
 		this.sessionId = this.sessionManager.createSession(this.adapter);
+		// Display the CLI session ID in the header
+		const session = this.sessionManager.getSession(this.sessionId);
+		if (session && this.sessionIdEl) {
+			const shortId = session.cliSessionId.slice(0, 8);
+			this.sessionIdEl.textContent = shortId;
+			this.sessionIdEl.setAttribute(
+				"aria-label",
+				`Session: ${session.cliSessionId}`
+			);
+		}
+	}
+
+	private copySessionId(): void {
+		if (!this.sessionId) return;
+		const session = this.sessionManager.getSession(this.sessionId);
+		if (!session) return;
+		const cmd = `claude -r ${session.cliSessionId}`;
+		navigator.clipboard.writeText(cmd).then(() => {
+			new Notice(`Copied: ${cmd}`);
+		});
+	}
+
+	/** Update the session ID display when the real CLI session ID arrives. */
+	private updateSessionIdDisplay(cliSessionId: string): void {
+		if (this.sessionIdEl) {
+			const shortId = cliSessionId.slice(0, 8);
+			this.sessionIdEl.textContent = shortId;
+			this.sessionIdEl.setAttribute(
+				"aria-label",
+				`Session: ${cliSessionId}`
+			);
+		}
 	}
 
 	private setupEventListeners(): void {
@@ -250,25 +314,83 @@ export class ChatView extends ItemView {
 
 		// Input: Enter to send, Shift+Enter for newline
 		this.inputEl.addEventListener("keydown", (e) => {
+			// Handle autocomplete selection
+			if (
+				e.key === "Tab" ||
+				(e.key === "Enter" && this.isPopupVisible())
+			) {
+				const selected =
+					this.slashPopup.querySelector(".ac-popup-item-active") ||
+					this.mentionPopup.querySelector(".ac-popup-item-active");
+				if (selected) {
+					e.preventDefault();
+					(selected as HTMLElement).click();
+					return;
+				}
+			}
+
+			// Navigate autocomplete with arrow keys
+			if (
+				(e.key === "ArrowDown" || e.key === "ArrowUp") &&
+				this.isPopupVisible()
+			) {
+				e.preventDefault();
+				this.navigatePopup(e.key === "ArrowDown" ? 1 : -1);
+				return;
+			}
+
+			if (e.key === "Escape" && this.isPopupVisible()) {
+				e.preventDefault();
+				this.hideAllPopups();
+				return;
+			}
+
 			if (e.key === "Enter" && !e.shiftKey) {
 				e.preventDefault();
 				this.sendMessage();
 			}
 		});
 
-		// Input: auto-resize
+		// Input: auto-resize + autocomplete
 		this.inputEl.addEventListener("input", () => {
 			this.autoResizeInput();
-			this.handleSlashAutocomplete();
+			this.handleAutocomplete();
 		});
 
-		// File edit accept buttons (delegated)
+		// File edit revert buttons (delegated)
 		this.messagesContainer.addEventListener("click", (e) => {
 			const target = e.target as HTMLElement;
-			if (target.classList.contains("ac-btn-accept")) {
-				this.handleAcceptEdit(target);
+			if (target.classList.contains("ac-btn-reject")) {
+				this.handleRevertEdit(target);
 			}
 		});
+	}
+
+	private isPopupVisible(): boolean {
+		return (
+			this.slashPopup.style.display !== "none" ||
+			this.mentionPopup.style.display !== "none"
+		);
+	}
+
+	private navigatePopup(direction: number): void {
+		const popup =
+			this.slashPopup.style.display !== "none"
+				? this.slashPopup
+				: this.mentionPopup;
+		const items = Array.from(popup.querySelectorAll(".ac-popup-item"));
+		if (items.length === 0) return;
+
+		const active = popup.querySelector(".ac-popup-item-active");
+		let idx = active ? items.indexOf(active) : -1;
+		if (active) active.removeClass("ac-popup-item-active");
+
+		idx += direction;
+		if (idx < 0) idx = items.length - 1;
+		if (idx >= items.length) idx = 0;
+
+		items[idx].addClass("ac-popup-item-active");
+		(items[idx] as HTMLElement).scrollIntoView({ block: "nearest" });
 	}
 
 	private async sendMessage(): Promise<void> {
@@ -279,7 +401,7 @@ export class ChatView extends ItemView {
 		// Clear input
 		this.inputEl.value = "";
 		this.autoResizeInput();
-		this.hideSlashPopup();
+		this.hideAllPopups();
 
 		// Gather vault context
 		const context = getVaultContext(this.app);
@@ -313,13 +435,11 @@ export class ChatView extends ItemView {
 		this.streamingMessageEl = null;
 
 		try {
-			// sendPrompt emits the user message synchronously, which renders
-			// the user bubble first. Only THEN do we show the activity indicator
-			// so it appears below the user message in the chat flow.
 			await this.sessionManager.sendPrompt(
 				this.sessionId,
 				text,
-				context
+				context,
+				{ editApprovalMode: this.settings.editApprovalMode }
 			);
 			this.setActivity("Starting…");
 		} catch (err) {
@@ -331,16 +451,11 @@ export class ChatView extends ItemView {
 	}
 
 	private setActivity(text: string): void {
-		// Remove any existing inline activity indicator
 		this.clearActivity();
-
-		// Create an inline activity element inside the messages area
 		this.activityBar = this.messagesContainer.createDiv({
 			cls: "ac-activity-inline",
 		});
-		const spinner = this.activityBar.createSpan({
-			cls: "ac-activity-spinner",
-		});
+		this.activityBar.createSpan({ cls: "ac-activity-spinner" });
 		this.activityText = this.activityBar.createSpan({
 			cls: "ac-activity-text",
 			text,
@@ -358,11 +473,18 @@ export class ChatView extends ItemView {
 
 	private handleMessage(message: AgentMessage): void {
 		this.handleMsgCount++;
-		// [PIPE-8] Log every message arriving at the UI
 		if (this.handleMsgCount <= 10 || this.handleMsgCount % 20 === 0) {
 			console.log(
 				`[agentic-copilot][PIPE-8] ChatView.handleMessage #${this.handleMsgCount}: role=${message.role} thinking=${!!message.isThinking} tool=${!!message.toolUse} len=${message.content.length}`
 			);
+		}
+
+		// System messages carry metadata (e.g. CLI session ID) — not displayed
+		if (message.role === "system") {
+			if (message.cliSessionId) {
+				this.updateSessionIdDisplay(message.cliSessionId);
+			}
+			return;
 		}
 
 		if (message.role === "user") {
@@ -374,40 +496,30 @@ export class ChatView extends ItemView {
 			this.setActivity(this.extractActivityText(message));
 
 			if (message.fileEdit) {
-				// File edits get their own block (needs Accept/Reject)
+				// File edits get their own block with Keep/Revert controls.
+				// The CLI already wrote the file — the renderer handles the
+				// button labels based on editApprovalMode.
 				this.streamingMessageEl = null;
 				const el = this.messagesContainer.createDiv();
 				this.renderer.renderFileEditBlock(message, el);
-
-				// Auto-accept: apply immediately
-				if (this.settings.editApprovalMode === "auto-accept" && message.fileEdit.filePath) {
-					this.onApplyEdit(
-						message.fileEdit.filePath,
-						message.fileEdit.oldContent || "",
-						message.fileEdit.newContent
-					).then(() => {
-						const status = el.querySelector(".ac-file-edit-actions");
-						if (status) {
-							status.empty();
-							status.createSpan({
-								cls: "ac-file-edit-status",
-								text: "Applied",
-							});
-						}
-						el.querySelector(".ac-file-edit")?.addClass("ac-file-edit-accepted");
-					}).catch(() => {});
-				}
 			} else {
 				// Non-edit tools: render as compact chip inline
 				if (!this.streamingMessageEl) {
-					this.streamingMessageEl = this.messagesContainer.createDiv({
-						cls: "ac-message ac-message-assistant",
+					this.streamingMessageEl =
+						this.messagesContainer.createDiv({
+							cls: "ac-message ac-message-assistant",
+						});
+					this.streamingMessageEl.createDiv({
+						cls: "ac-message-body",
 					});
-					this.streamingMessageEl.createDiv({ cls: "ac-message-body" });
 				}
-				const body = this.streamingMessageEl.querySelector(".ac-message-body");
+				const body =
+					this.streamingMessageEl.querySelector(".ac-message-body");
 				if (body) {
-					this.renderer.renderToolChip(message, body as HTMLElement);
+					this.renderer.renderToolChip(
+						message,
+						body as HTMLElement
+					);
 				}
 			}
 			this.scrollToBottom();
@@ -417,7 +529,6 @@ export class ChatView extends ItemView {
 		// Assistant thinking — collapsible reasoning block
 		if (message.role === "assistant" && message.isThinking) {
 			this.setActivity("Thinking…");
-			// Finalize any non-thinking assistant stream
 			this.streamingMessageEl = null;
 
 			if (!this.streamingThinkingEl) {
@@ -435,23 +546,17 @@ export class ChatView extends ItemView {
 					cls: "ac-thinking-icon",
 					text: "Thinking",
 				});
-				summary.createSpan({
-					cls: "ac-thinking-label",
-				});
+				summary.createSpan({ cls: "ac-thinking-label" });
 				details.createDiv({ cls: "ac-thinking-content" });
 			}
 
-			// Render directly into .ac-thinking-content (not .ac-message-body)
 			const contentEl =
 				this.streamingThinkingEl.querySelector<HTMLElement>(
 					".ac-thinking-content"
 				);
 			if (contentEl) {
 				contentEl.empty();
-				this.renderer.renderMarkdownInto(
-					message.content,
-					contentEl
-				);
+				this.renderer.renderMarkdownInto(message.content, contentEl);
 			}
 			this.scrollToBottom();
 			return;
@@ -460,41 +565,20 @@ export class ChatView extends ItemView {
 		// Assistant text — streaming accumulation
 		if (message.role === "assistant") {
 			this.setActivity("Responding…");
-			// When text starts, finalize thinking (collapse it)
 			if (this.streamingThinkingEl) {
 				const details =
 					this.streamingThinkingEl.querySelector("details");
-				if (details) {
-					details.removeAttribute("open");
-				}
+				if (details) details.removeAttribute("open");
 				this.streamingThinkingEl = null;
 			}
 
 			if (!this.streamingMessageEl) {
-				// Create a new message bubble
 				this.streamingMessageEl = this.messagesContainer.createDiv({
 					cls: "ac-message ac-message-assistant",
 				});
-				const header = this.streamingMessageEl.createDiv({
-					cls: "ac-message-header",
-				});
-				header.createSpan({
-					cls: "ac-message-role",
-					text: "Agent",
-				});
-				header.createSpan({
-					cls: "ac-message-time",
-					text: new Date().toLocaleTimeString([], {
-						hour: "2-digit",
-						minute: "2-digit",
-					}),
-				});
-				this.streamingMessageEl.createDiv({
-					cls: "ac-message-body",
-				});
+				this.streamingMessageEl.createDiv({ cls: "ac-message-body" });
 			}
 
-			// Update the streaming content
 			this.renderer.renderStreamingText(
 				message.content,
 				this.streamingMessageEl
@@ -506,15 +590,6 @@ export class ChatView extends ItemView {
 	private renderUserMessage(message: AgentMessage): void {
 		const el = this.messagesContainer.createDiv({
 			cls: "ac-message ac-message-user",
-		});
-		const header = el.createDiv({ cls: "ac-message-header" });
-		header.createSpan({ cls: "ac-message-role", text: "You" });
-		header.createSpan({
-			cls: "ac-message-time",
-			text: new Date(message.timestamp).toLocaleTimeString([], {
-				hour: "2-digit",
-				minute: "2-digit",
-			}),
 		});
 		const body = el.createDiv({ cls: "ac-message-body" });
 		body.createEl("p", { text: message.content });
@@ -545,7 +620,9 @@ export class ChatView extends ItemView {
 			if (name === "WebSearch" && parsed.query) {
 				return "Searching web…";
 			}
-		} catch { /* ignore parse errors */ }
+		} catch {
+			/* ignore parse errors */
+		}
 		return `Using ${name}…`;
 	}
 
@@ -558,13 +635,10 @@ export class ChatView extends ItemView {
 	private onGenerationComplete(): void {
 		this.isGenerating = false;
 		this.clearActivity();
-		// Collapse thinking if still open
 		if (this.streamingThinkingEl) {
 			const details =
 				this.streamingThinkingEl.querySelector("details");
-			if (details) {
-				details.removeAttribute("open");
-			}
+			if (details) details.removeAttribute("open");
 			this.streamingThinkingEl = null;
 		}
 		this.streamingMessageEl = null;
@@ -581,9 +655,7 @@ export class ChatView extends ItemView {
 
 	private updateStatus(status: SessionStatus): void {
 		const dot = this.statusEl.querySelector(".ac-status-dot");
-		if (dot) {
-			dot.className = `ac-status-dot ac-status-${status}`;
-		}
+		if (dot) dot.className = `ac-status-dot ac-status-${status}`;
 	}
 
 	private showError(error: string): void {
@@ -616,81 +688,212 @@ export class ChatView extends ItemView {
 			Math.min(this.inputEl.scrollHeight, 200) + "px";
 	}
 
-	private handleSlashAutocomplete(): void {
+	// ── Autocomplete ──
+
+	private handleAutocomplete(): void {
 		const text = this.inputEl.value;
+		const cursor = this.inputEl.selectionStart;
+		const beforeCursor = text.slice(0, cursor);
+
+		// Check for @ mention (files)
+		const atMatch = beforeCursor.match(/@([\w./-]*)$/);
+		if (atMatch) {
+			this.showFileMentions(atMatch[1]);
+			return;
+		}
+
+		// Check for # mention (tags)
+		const hashMatch = beforeCursor.match(/#([\w/-]*)$/);
+		if (hashMatch && !beforeCursor.endsWith("##")) {
+			this.showTagMentions(hashMatch[1]);
+			return;
+		}
+
+		// Check for / commands (only at start)
 		if (text.startsWith("/") && !text.includes(" ")) {
 			const filter = text.toLowerCase();
 			const matches = this.slashCommands.filter((cmd) =>
 				cmd.name.toLowerCase().startsWith(filter)
 			);
-
 			if (matches.length > 0) {
 				this.showSlashPopup(matches);
-			} else {
-				this.hideSlashPopup();
+				return;
 			}
-		} else {
-			this.hideSlashPopup();
 		}
+
+		this.hideAllPopups();
+	}
+
+	private showFileMentions(query: string): void {
+		this.hideAllPopups();
+		const files = this.app.vault.getMarkdownFiles();
+		const q = query.toLowerCase();
+		const matches = files
+			.filter((f) => f.path.toLowerCase().includes(q))
+			.sort((a, b) => b.stat.mtime - a.stat.mtime)
+			.slice(0, 8);
+
+		if (matches.length === 0) {
+			this.mentionPopup.style.display = "none";
+			return;
+		}
+
+		this.mentionPopup.empty();
+		this.mentionPopup.style.display = "";
+
+		for (const file of matches) {
+			const item = this.mentionPopup.createDiv({
+				cls: "ac-popup-item",
+			});
+			const iconEl = item.createSpan({ cls: "ac-popup-item-icon" });
+			setIcon(iconEl, "file-text");
+			item.createSpan({
+				cls: "ac-popup-item-text",
+				text: file.path,
+			});
+
+			item.addEventListener("click", () => {
+				this.insertMention("@", query, file.path);
+			});
+		}
+		// Activate first item
+		const first = this.mentionPopup.querySelector(".ac-popup-item");
+		if (first) first.addClass("ac-popup-item-active");
+	}
+
+	private showTagMentions(query: string): void {
+		this.hideAllPopups();
+		let tags: string[] = [];
+		try {
+			const tagMap = (
+				this.app.metadataCache as unknown as {
+					getTags: () => Record<string, number>;
+				}
+			).getTags();
+			if (tagMap) {
+				tags = Object.keys(tagMap);
+			}
+		} catch {
+			/* getTags may not be available */
+		}
+
+		const q = query.toLowerCase();
+		const matches = tags
+			.filter((t) => t.toLowerCase().includes(q))
+			.slice(0, 8);
+
+		if (matches.length === 0) {
+			this.mentionPopup.style.display = "none";
+			return;
+		}
+
+		this.mentionPopup.empty();
+		this.mentionPopup.style.display = "";
+
+		for (const tag of matches) {
+			const item = this.mentionPopup.createDiv({
+				cls: "ac-popup-item",
+			});
+			const iconEl = item.createSpan({ cls: "ac-popup-item-icon" });
+			setIcon(iconEl, "hash");
+			item.createSpan({
+				cls: "ac-popup-item-text",
+				text: tag,
+			});
+
+			item.addEventListener("click", () => {
+				// Tags from metadataCache include the # prefix
+				const tagName = tag.startsWith("#") ? tag.slice(1) : tag;
+				this.insertMention("#", query, tagName);
+			});
+		}
+		const first = this.mentionPopup.querySelector(".ac-popup-item");
+		if (first) first.addClass("ac-popup-item-active");
+	}
+
+	private insertMention(
+		trigger: string,
+		query: string,
+		replacement: string
+	): void {
+		const cursor = this.inputEl.selectionStart;
+		const text = this.inputEl.value;
+		// Find the trigger position
+		const start = cursor - query.length - trigger.length;
+		const before = text.slice(0, start);
+		const after = text.slice(cursor);
+		this.inputEl.value = `${before}${trigger}${replacement} ${after}`;
+		const newCursor = start + trigger.length + replacement.length + 1;
+		this.inputEl.selectionStart = newCursor;
+		this.inputEl.selectionEnd = newCursor;
+		this.inputEl.focus();
+		this.hideAllPopups();
+		this.autoResizeInput();
 	}
 
 	private showSlashPopup(commands: SlashCommand[]): void {
+		this.hideAllPopups();
 		this.slashPopup.empty();
 		this.slashPopup.style.display = "";
 
 		for (const cmd of commands) {
 			const item = this.slashPopup.createDiv({
-				cls: "ac-slash-item",
+				cls: "ac-popup-item",
 			});
-			item.createSpan({ cls: "ac-slash-name", text: cmd.name });
-			item.createSpan({ cls: "ac-slash-desc", text: cmd.description });
+			item.createSpan({ cls: "ac-popup-item-text", text: cmd.name });
+			item.createSpan({
+				cls: "ac-popup-item-desc",
+				text: cmd.description,
+			});
 
 			item.addEventListener("click", () => {
 				this.inputEl.value = cmd.name + " ";
 				this.inputEl.focus();
-				this.hideSlashPopup();
+				this.hideAllPopups();
 			});
 		}
+		const first = this.slashPopup.querySelector(".ac-popup-item");
+		if (first) first.addClass("ac-popup-item-active");
 	}
 
-	private hideSlashPopup(): void {
+	private hideAllPopups(): void {
 		this.slashPopup.style.display = "none";
+		this.mentionPopup.style.display = "none";
 	}
 
-	private async handleAcceptEdit(button: HTMLElement): Promise<void> {
+	private async handleRevertEdit(button: HTMLElement): Promise<void> {
 		const filePath = button.dataset.filePath;
-		const newContent = button.dataset.newContent;
 		const oldContent = button.dataset.oldContent;
+		const newContent = button.dataset.newContent;
 
-		if (!filePath || !newContent) return;
+		if (!filePath) return;
 
 		try {
-			await this.onApplyEdit(filePath, oldContent || "", newContent);
+			await this.onRevertEdit(filePath, oldContent || "", newContent || "");
 			const editBlock = button.closest(".ac-file-edit");
 			if (editBlock) {
-				editBlock.addClass("ac-file-edit-accepted");
+				editBlock.addClass("ac-file-edit-rejected");
 				const actions = editBlock.querySelector(
 					".ac-file-edit-actions"
 				);
 				if (actions) {
-					actions.innerHTML = "";
+					actions.empty();
 					actions.createSpan({
 						cls: "ac-file-edit-status",
-						text: "Applied",
+						text: "Reverted",
 					});
 				}
 			}
-			new Notice(`Applied edit to ${filePath}`);
+			new Notice(`Reverted edit to ${filePath}`);
 		} catch (err) {
 			const msg =
-				err instanceof Error ? err.message : "Failed to apply edit";
-			new Notice(`Failed to apply edit: ${msg}`);
+				err instanceof Error ? err.message : "Failed to revert edit";
+			new Notice(`Failed to revert: ${msg}`);
 		}
 	}
 
 	/**
-	 * Public method to inject a prompt from an external command
-	 * (e.g., "explain selection" from context menu).
+	 * Public method to inject a prompt from an external command.
 	 */
 	async injectPrompt(prompt: string): Promise<void> {
 		this.inputEl.value = prompt;

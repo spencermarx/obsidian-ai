@@ -172,12 +172,12 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Edit approval")
 			.setDesc(
-				"Control how agent-suggested file edits are handled. 'Request approval' shows Accept/Reject buttons; 'Auto-accept' applies edits automatically."
+				"Control how file edits are reviewed. 'Review edits' shows Keep/Revert buttons after the agent writes; 'Auto-accept' hides review controls."
 			)
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOptions({
-						approve: "Request approval for edits",
+						approve: "Review edits (Keep/Revert)",
 						"auto-accept": "Auto-accept edits",
 					})
 					.setValue(this.plugin.settings.editApprovalMode)

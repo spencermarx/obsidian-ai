@@ -12,13 +12,15 @@ export interface AgentMessage {
 		input: string;
 		output?: string;
 	};
-	/** File edit suggested by the agent. */
+	/** File edit applied by the agent CLI. */
 	fileEdit?: {
 		filePath: string;
 		oldContent?: string;
 		newContent: string;
 		diff?: string;
 	};
+	/** CLI session ID — set on system init events from stream-json. */
+	cliSessionId?: string;
 	timestamp: number;
 }
 
@@ -66,6 +68,8 @@ export interface AgentAdapter {
 		prompt: string;
 		context: VaultContext;
 		cwd: string;
+		editApprovalMode?: "approve" | "auto-accept";
+		cliSessionId?: string;
 	}): SpawnArgs;
 
 	/**
