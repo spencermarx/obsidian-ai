@@ -1,0 +1,582 @@
+/* ============================================================
+   Agentic Copilot — Obsidian Plugin Styles
+   Uses Obsidian CSS variables for automatic theme support.
+   ============================================================ */
+
+/* Chat Container */
+.ac-chat-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+/* Header */
+.ac-chat-header {
+	display: flex;
+	align-items: center;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	flex-shrink: 0;
+}
+
+.ac-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ac-status-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.ac-status-idle {
+	background-color: var(--text-muted);
+}
+
+.ac-status-running {
+	background-color: var(--interactive-accent);
+	animation: ac-pulse 1.5s ease-in-out infinite;
+}
+
+.ac-status-error {
+	background-color: var(--text-error);
+}
+
+.ac-status-terminated {
+	background-color: var(--text-faint);
+}
+
+.ac-status-text {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+@keyframes ac-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
+}
+
+/* Messages Area */
+.ac-messages {
+	flex: 1;
+	overflow-y: auto;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+/* Welcome Screen */
+.ac-welcome {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 24px 16px;
+	color: var(--text-muted);
+}
+
+.ac-welcome h3 {
+	margin: 0 0 8px 0;
+	color: var(--text-normal);
+}
+
+.ac-welcome p {
+	margin: 0 0 16px 0;
+	font-size: var(--font-ui-small);
+}
+
+.ac-welcome-commands {
+	width: 100%;
+	max-width: 320px;
+	text-align: left;
+}
+
+.ac-welcome-commands-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	margin-bottom: 4px !important;
+}
+
+.ac-welcome-cmd {
+	display: flex;
+	gap: 8px;
+	padding: 4px 8px;
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+}
+
+.ac-welcome-cmd:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ac-welcome-cmd-name {
+	font-family: var(--font-monospace);
+	color: var(--interactive-accent);
+	white-space: nowrap;
+}
+
+.ac-welcome-cmd-desc {
+	color: var(--text-muted);
+}
+
+/* Message Bubbles */
+.ac-message {
+	padding: 8px 12px;
+	border-radius: var(--radius-m);
+	max-width: 100%;
+	word-wrap: break-word;
+}
+
+.ac-message-user {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	align-self: flex-end;
+	max-width: 85%;
+}
+
+.ac-message-user .ac-message-role,
+.ac-message-user .ac-message-time {
+	color: var(--text-on-accent);
+	opacity: 0.8;
+}
+
+.ac-message-assistant {
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	align-self: flex-start;
+}
+
+.ac-message-tool {
+	background: var(--background-secondary-alt);
+	color: var(--text-normal);
+	align-self: flex-start;
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.ac-message-error {
+	background: var(--background-modifier-error);
+	color: var(--text-error);
+	align-self: stretch;
+	border: 1px solid var(--text-error);
+}
+
+.ac-message-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+}
+
+.ac-message-role {
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--text-muted);
+}
+
+.ac-message-time {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+
+.ac-message-body {
+	font-size: var(--font-ui-small);
+	line-height: 1.5;
+}
+
+.ac-message-body p:first-child {
+	margin-top: 0;
+}
+
+.ac-message-body p:last-child {
+	margin-bottom: 0;
+}
+
+.ac-message-body pre {
+	background: var(--background-primary);
+	border-radius: var(--radius-s);
+	padding: 8px;
+	overflow-x: auto;
+	font-size: var(--font-ui-smaller);
+}
+
+/* Tool Use (Collapsible) */
+.ac-tool-use {
+	margin: 4px 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	overflow: hidden;
+}
+
+.ac-tool-summary {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	cursor: pointer;
+	background: var(--background-secondary);
+	font-size: var(--font-ui-small);
+	user-select: none;
+}
+
+.ac-tool-summary:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ac-tool-icon {
+	font-size: 14px;
+}
+
+.ac-tool-name {
+	font-family: var(--font-monospace);
+	font-weight: 500;
+	color: var(--interactive-accent);
+}
+
+.ac-tool-content {
+	padding: 8px 10px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.ac-tool-section {
+	margin-bottom: 8px;
+}
+
+.ac-tool-section:last-child {
+	margin-bottom: 0;
+}
+
+.ac-tool-section strong {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.ac-tool-section pre {
+	margin: 4px 0 0 0;
+	font-size: var(--font-ui-smaller);
+}
+
+/* File Edit Blocks */
+.ac-file-edit {
+	margin: 8px 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	overflow: hidden;
+}
+
+.ac-file-edit-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 10px;
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-small);
+}
+
+.ac-file-edit-icon {
+	font-size: 14px;
+}
+
+.ac-file-edit-path {
+	font-family: var(--font-monospace);
+	font-weight: 500;
+}
+
+.ac-file-edit-diff {
+	max-height: 300px;
+	overflow: auto;
+}
+
+.ac-diff {
+	margin: 0;
+	padding: 8px;
+	font-size: var(--font-ui-smaller);
+	line-height: 1.4;
+}
+
+.ac-diff-removed {
+	background: hsla(0, 60%, 50%, 0.15);
+	color: var(--text-error);
+}
+
+.ac-diff-added {
+	background: hsla(120, 60%, 40%, 0.15);
+	color: var(--text-success, var(--interactive-accent));
+}
+
+.ac-diff-new pre {
+	margin: 0;
+}
+
+.ac-file-edit-actions {
+	display: flex;
+	gap: 8px;
+	padding: 8px 10px;
+	border-top: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.ac-file-edit-accepted {
+	border-color: var(--text-success, var(--interactive-accent));
+}
+
+.ac-file-edit-rejected {
+	opacity: 0.5;
+}
+
+.ac-file-edit-status {
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	color: var(--text-muted);
+}
+
+/* Input Area */
+.ac-input-area {
+	display: flex;
+	gap: 8px;
+	padding: 8px 12px;
+	border-top: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	align-items: flex-end;
+	flex-shrink: 0;
+}
+
+.ac-input {
+	flex: 1;
+	min-height: 36px;
+	max-height: 200px;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-family: var(--font-interface);
+	font-size: var(--font-ui-small);
+	resize: none;
+	outline: none;
+	line-height: 1.4;
+}
+
+.ac-input:focus {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.ac-input::placeholder {
+	color: var(--text-faint);
+}
+
+.ac-btn-group {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+/* Buttons */
+.ac-btn {
+	padding: 6px 12px;
+	border-radius: var(--radius-s);
+	border: none;
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	transition: background 0.15s ease;
+}
+
+.ac-btn-send {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.ac-btn-send:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.ac-btn-stop {
+	background: var(--text-error);
+	color: white;
+}
+
+.ac-btn-stop:hover {
+	opacity: 0.9;
+}
+
+.ac-btn-accept {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.ac-btn-accept:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.ac-btn-reject {
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.ac-btn-reject:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ac-btn-primary {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.ac-btn-primary:hover {
+	background: var(--interactive-accent-hover);
+}
+
+/* Slash Command Popup */
+.ac-slash-popup {
+	position: relative;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+	box-shadow: var(--shadow-s);
+	max-height: 200px;
+	overflow-y: auto;
+	margin: 0 12px;
+}
+
+.ac-slash-item {
+	display: flex;
+	gap: 10px;
+	padding: 8px 12px;
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+}
+
+.ac-slash-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ac-slash-name {
+	font-family: var(--font-monospace);
+	color: var(--interactive-accent);
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.ac-slash-desc {
+	color: var(--text-muted);
+}
+
+/* Onboarding */
+.ac-onboarding {
+	padding: 24px;
+	overflow-y: auto;
+}
+
+.ac-onboarding h2 {
+	margin-top: 0;
+}
+
+.ac-agent-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin: 16px 0;
+}
+
+.ac-agent-card {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 16px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+}
+
+.ac-agent-info h3 {
+	margin: 0 0 4px 0;
+	font-size: var(--font-ui-medium);
+}
+
+.ac-agent-version {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.ac-agent-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	display: block;
+	margin-top: 2px;
+}
+
+.ac-install-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin: 16px 0;
+}
+
+.ac-install-item {
+	padding: 12px 16px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+}
+
+.ac-install-item h3 {
+	margin: 0 0 4px 0;
+}
+
+.ac-install-item p {
+	margin: 0 0 8px 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.ac-install-item pre {
+	margin: 0;
+	padding: 8px;
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+}
+
+.ac-install-note {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+/* Settings: Detected Agents */
+.ac-detected-agent {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 0;
+}
+
+.ac-detected-name {
+	font-weight: 500;
+}
+
+.ac-detected-version {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.ac-detected-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}

@@ -1,0 +1,47 @@
+name: Release Obsidian Plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Verify build artifacts exist
+        run: |
+          test -f main.js || { echo "main.js not found"; exit 1; }
+          test -f manifest.json || { echo "manifest.json not found"; exit 1; }
+          test -f styles.css || { echo "styles.css not found"; exit 1; }
+
+      - name: Create zip for convenience download
+        run: zip -j agentic-copilot.zip main.js manifest.json styles.css
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+
+          gh release create "$tag" \
+            --title="$tag" \
+            --generate-notes \
+            main.js manifest.json styles.css agentic-copilot.zip

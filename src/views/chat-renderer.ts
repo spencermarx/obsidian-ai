@@ -1,0 +1,235 @@
+import { MarkdownRenderer, Component } from "obsidian";
+import { AgentMessage } from "../adapters/types";
+
+/**
+ * Renders agent messages into DOM elements using Obsidian's
+ * built-in MarkdownRenderer for consistent styling and theme support.
+ */
+export class ChatRenderer {
+	private component: Component;
+	private sourcePath: string;
+
+	constructor(component: Component, sourcePath: string) {
+		this.component = component;
+		this.sourcePath = sourcePath;
+	}
+
+	/**
+	 * Render a single agent message into a container element.
+	 */
+	async renderMessage(
+		message: AgentMessage,
+		container: HTMLElement
+	): Promise<void> {
+		container.empty();
+		container.addClass("ac-message", `ac-message-${message.role}`);
+
+		// Role label
+		const header = container.createDiv({ cls: "ac-message-header" });
+		header.createSpan({
+			cls: "ac-message-role",
+			text: this.getRoleLabel(message.role),
+		});
+		header.createSpan({
+			cls: "ac-message-time",
+			text: this.formatTime(message.timestamp),
+		});
+
+		// Message body
+		const body = container.createDiv({ cls: "ac-message-body" });
+
+		if (message.toolUse) {
+			this.renderToolUse(message, body);
+		}
+
+		if (message.fileEdit) {
+			this.renderFileEdit(message, body);
+		}
+
+		if (message.content && message.role !== "tool") {
+			await this.renderMarkdown(message.content, body);
+		}
+	}
+
+	/**
+	 * Render streaming assistant text — updates in place.
+	 */
+	async renderStreamingText(
+		content: string,
+		container: HTMLElement
+	): Promise<void> {
+		const body =
+			container.querySelector<HTMLElement>(".ac-message-body") ||
+			container.createDiv({ cls: "ac-message-body" });
+		body.empty();
+		await this.renderMarkdown(content, body);
+	}
+
+	/**
+	 * Render a tool use block as a collapsible section.
+	 */
+	private renderToolUse(message: AgentMessage, container: HTMLElement): void {
+		if (!message.toolUse) return;
+
+		const details = container.createEl("details", {
+			cls: "ac-tool-use",
+		});
+		const summary = details.createEl("summary", {
+			cls: "ac-tool-summary",
+		});
+		summary.createSpan({ cls: "ac-tool-icon", text: "\u{1F527}" });
+		summary.createSpan({
+			cls: "ac-tool-name",
+			text: message.toolUse.name,
+		});
+
+		const content = details.createDiv({ cls: "ac-tool-content" });
+
+		if (message.toolUse.input) {
+			const inputSection = content.createDiv({ cls: "ac-tool-section" });
+			inputSection.createEl("strong", { text: "Input:" });
+			const pre = inputSection.createEl("pre");
+			pre.createEl("code", {
+				text: this.truncate(message.toolUse.input, 2000),
+			});
+		}
+
+		if (message.toolUse.output) {
+			const outputSection = content.createDiv({ cls: "ac-tool-section" });
+			outputSection.createEl("strong", { text: "Output:" });
+			const pre = outputSection.createEl("pre");
+			pre.createEl("code", {
+				text: this.truncate(message.toolUse.output, 2000),
+			});
+		}
+	}
+
+	/**
+	 * Render a file edit block with diff and accept/reject buttons.
+	 */
+	private renderFileEdit(
+		message: AgentMessage,
+		container: HTMLElement
+	): void {
+		if (!message.fileEdit) return;
+
+		const editBlock = container.createDiv({ cls: "ac-file-edit" });
+
+		const header = editBlock.createDiv({ cls: "ac-file-edit-header" });
+		header.createSpan({ cls: "ac-file-edit-icon", text: "\u{1F4DD}" });
+		header.createSpan({
+			cls: "ac-file-edit-path",
+			text: message.fileEdit.filePath,
+		});
+
+		// Diff display
+		const diffContainer = editBlock.createDiv({ cls: "ac-file-edit-diff" });
+		if (message.fileEdit.oldContent && message.fileEdit.newContent) {
+			this.renderSimpleDiff(
+				message.fileEdit.oldContent,
+				message.fileEdit.newContent,
+				diffContainer
+			);
+		} else if (message.fileEdit.newContent) {
+			const pre = diffContainer.createEl("pre", {
+				cls: "ac-diff-new",
+			});
+			pre.createEl("code", {
+				text: this.truncate(message.fileEdit.newContent, 3000),
+			});
+		}
+
+		// Action buttons
+		const actions = editBlock.createDiv({ cls: "ac-file-edit-actions" });
+		const acceptBtn = actions.createEl("button", {
+			cls: "ac-btn ac-btn-accept",
+			text: "Accept",
+		});
+		acceptBtn.dataset.filePath = message.fileEdit.filePath;
+		acceptBtn.dataset.newContent = message.fileEdit.newContent;
+		acceptBtn.dataset.oldContent = message.fileEdit.oldContent || "";
+
+		const rejectBtn = actions.createEl("button", {
+			cls: "ac-btn ac-btn-reject",
+			text: "Reject",
+		});
+		rejectBtn.addEventListener("click", () => {
+			editBlock.addClass("ac-file-edit-rejected");
+			actions.empty();
+			actions.createSpan({
+				cls: "ac-file-edit-status",
+				text: "Rejected",
+			});
+		});
+	}
+
+	/**
+	 * Render a simple line-by-line diff.
+	 */
+	private renderSimpleDiff(
+		oldText: string,
+		newText: string,
+		container: HTMLElement
+	): void {
+		const oldLines = oldText.split("\n");
+		const newLines = newText.split("\n");
+
+		const pre = container.createEl("pre", { cls: "ac-diff" });
+
+		// Simple diff: show removed lines then added lines
+		for (const line of oldLines) {
+			const el = pre.createEl("div", { cls: "ac-diff-removed" });
+			el.textContent = `- ${line}`;
+		}
+		for (const line of newLines) {
+			const el = pre.createEl("div", { cls: "ac-diff-added" });
+			el.textContent = `+ ${line}`;
+		}
+	}
+
+	private async renderMarkdown(
+		content: string,
+		container: HTMLElement
+	): Promise<void> {
+		try {
+			await MarkdownRenderer.render(
+				// @ts-expect-error — app is passed via the component's owner
+				this.component.app || (this.component as { app: unknown }).app,
+				content,
+				container,
+				this.sourcePath,
+				this.component
+			);
+		} catch {
+			// Fallback: render as plain text
+			container.createEl("p", { text: content });
+		}
+	}
+
+	private getRoleLabel(role: string): string {
+		switch (role) {
+			case "user":
+				return "You";
+			case "assistant":
+				return "Agent";
+			case "tool":
+				return "Tool";
+			case "system":
+				return "System";
+			default:
+				return role;
+		}
+	}
+
+	private formatTime(timestamp: number): string {
+		return new Date(timestamp).toLocaleTimeString([], {
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+	}
+
+	private truncate(text: string, maxLength: number): string {
+		if (text.length <= maxLength) return text;
+		return text.slice(0, maxLength) + "\n... (truncated)";
+	}
+}
