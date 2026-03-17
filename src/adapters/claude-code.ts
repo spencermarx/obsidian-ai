@@ -49,6 +49,8 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		prompt: string;
 		context: VaultContext;
 		cwd: string;
+		editApprovalMode?: "approve" | "auto-accept";
+		cliSessionId?: string;
 	}): SpawnArgs {
 		const contextStr = formatContextForPrompt(opts.context, {
 			includeFile: true,
@@ -59,18 +61,35 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			? `${contextStr}\n\n${opts.prompt}`
 			: opts.prompt;
 
+		// In "approve" mode, exclude Write/Edit so the CLI denies them.
+		// The plugin captures the intended edit from the stream and shows Accept/Reject.
+		// In "auto-accept" mode, include all tools so the CLI writes directly.
+		const readTools = "Read,Glob,Grep,WebSearch,WebFetch,Bash";
+		const writeTools = "Write,Edit,NotebookEdit";
+		const allowedTools =
+			opts.editApprovalMode === "auto-accept"
+				? `${readTools},${writeTools}`
+				: readTools;
+
+		const args = [
+			"--output-format",
+			"stream-json",
+			"--verbose",
+			"--include-partial-messages",
+			"--allowedTools",
+			allowedTools,
+		];
+
+		// Session persistence for multi-turn and CLI resumption
+		if (opts.cliSessionId) {
+			args.push("--session-id", opts.cliSessionId);
+		}
+
+		args.push("-p", fullPrompt);
+
 		return {
 			command: this.binaryName,
-			args: [
-				"--output-format",
-				"stream-json",
-				"--verbose",
-				"--include-partial-messages",
-				"--allowedTools",
-				"Read,Glob,Grep,Write,Edit,NotebookEdit,WebSearch,WebFetch,Bash",
-				"-p",
-				fullPrompt,
-			],
+			args,
 		};
 	}
 

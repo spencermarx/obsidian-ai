@@ -1,4 +1,4 @@
-import { MarkdownRenderer, Component } from "obsidian";
+import { MarkdownRenderer, Component, setIcon } from "obsidian";
 import { AgentMessage } from "../adapters/types";
 import type { AgenticCopilotSettings } from "../constants";
 
@@ -88,10 +88,8 @@ export class ChatRenderer {
 		if (!message.toolUse) return;
 
 		const chip = container.createDiv({ cls: "ac-tool-chip" });
-		chip.createSpan({
-			cls: "ac-tool-chip-icon",
-			text: this.getToolIcon(message.toolUse.name),
-		});
+		const iconEl = chip.createSpan({ cls: "ac-tool-chip-icon" });
+		setIcon(iconEl, this.getToolIconName(message.toolUse.name));
 		chip.createSpan({
 			cls: "ac-tool-chip-name",
 			text: message.toolUse.name,
@@ -116,19 +114,20 @@ export class ChatRenderer {
 		this.renderFileEdit(message, body);
 	}
 
-	private getToolIcon(toolName: string): string {
+	private getToolIconName(toolName: string): string {
 		const icons: Record<string, string> = {
-			Read: "\u{1F4C4}",
-			Glob: "\u{1F50D}",
-			Grep: "\u{1F50E}",
-			LS: "\u{1F4C2}",
-			WebSearch: "\u{1F310}",
-			WebFetch: "\u{1F310}",
-			Bash: "\u{1F4BB}",
-			Write: "\u{270F}\u{FE0F}",
-			Edit: "\u{270F}\u{FE0F}",
+			Read: "file-text",
+			Glob: "search",
+			Grep: "search",
+			LS: "folder",
+			WebSearch: "globe",
+			WebFetch: "globe",
+			Bash: "terminal",
+			Write: "pencil",
+			Edit: "pencil",
+			NotebookEdit: "pencil",
 		};
-		return icons[toolName] || "\u{1F527}";
+		return icons[toolName] || "wrench";
 	}
 
 	private extractToolSummary(toolName: string, input: string): string {
@@ -214,7 +213,8 @@ export class ChatRenderer {
 		const editBlock = container.createDiv({ cls: "ac-file-edit" });
 
 		const header = editBlock.createDiv({ cls: "ac-file-edit-header" });
-		header.createSpan({ cls: "ac-file-edit-icon", text: "\u{1F4DD}" });
+		const editIconEl = header.createSpan({ cls: "ac-file-edit-icon" });
+		setIcon(editIconEl, "file-pen-line");
 		header.createSpan({
 			cls: "ac-file-edit-path",
 			text: message.fileEdit.filePath,

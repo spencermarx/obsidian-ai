@@ -66,6 +66,8 @@ export interface AgentAdapter {
 		prompt: string;
 		context: VaultContext;
 		cwd: string;
+		editApprovalMode?: "approve" | "auto-accept";
+		cliSessionId?: string;
 	}): SpawnArgs;
 
 	/**

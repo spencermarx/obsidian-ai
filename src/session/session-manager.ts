@@ -20,6 +20,8 @@ export interface Session {
 	error?: string;
 	/** Handle for the force-kill timer so we can cancel it. */
 	killTimer?: ReturnType<typeof setTimeout>;
+	/** CLI-level session UUID for conversation persistence and resumption. */
+	cliSessionId: string;
 }
 
 type SessionEventType = "message" | "status" | "error" | "complete";
@@ -71,6 +73,7 @@ export class SessionManager {
 			process: null,
 			messageQueue: new MessageQueue(),
 			userMessages: [],
+			cliSessionId: crypto.randomUUID(),
 		};
 
 		session.messageQueue.onMessage((msg) => {
@@ -102,7 +105,8 @@ export class SessionManager {
 	async sendPrompt(
 		sessionId: string,
 		prompt: string,
-		context: VaultContext
+		context: VaultContext,
+		opts?: { editApprovalMode?: "approve" | "auto-accept" }
 	): Promise<void> {
 		const session = this.sessions.get(sessionId);
 		if (!session) throw new Error(`Session ${sessionId} not found`);
@@ -128,6 +132,8 @@ export class SessionManager {
 			prompt,
 			context,
 			cwd: context.vaultPath,
+			editApprovalMode: opts?.editApprovalMode,
+			cliSessionId: session.cliSessionId,
 		});
 
 		// Resolve the full binary path before spawning.
