@@ -31,8 +31,8 @@ export class ChatView extends ItemView {
 	private stopBtn!: HTMLButtonElement;
 	private statusEl!: HTMLElement;
 	private slashPopup!: HTMLElement;
-	private activityBar!: HTMLElement;
-	private activityText!: HTMLElement;
+	private activityBar: HTMLElement | null = null;
+	private activityText: HTMLElement | null = null;
 
 	// State
 	private isGenerating = false;
@@ -121,21 +121,6 @@ export class ChatView extends ItemView {
 
 		// Welcome message
 		this.renderWelcome();
-
-		// Activity indicator bar (hidden by default)
-		this.activityBar = container.createDiv({ cls: "ac-activity-bar" });
-		this.activityBar.style.display = "none";
-		const activityDot = this.activityBar.createSpan({
-			cls: "ac-activity-dot",
-		});
-		// Three bouncing dots for the animation
-		for (let i = 0; i < 3; i++) {
-			activityDot.createSpan({ cls: "ac-activity-bounce" });
-		}
-		this.activityText = this.activityBar.createSpan({
-			cls: "ac-activity-text",
-			text: "Working…",
-		});
 
 		// Slash command popup (hidden by default)
 		this.slashPopup = container.createDiv({ cls: "ac-slash-popup" });
@@ -314,12 +299,27 @@ export class ChatView extends ItemView {
 	}
 
 	private setActivity(text: string): void {
-		this.activityBar.style.display = "";
-		this.activityText.setText(text);
+		// Remove any existing inline activity indicator
+		this.clearActivity();
+
+		// Create an inline activity element inside the messages area
+		this.activityBar = this.messagesContainer.createDiv({
+			cls: "ac-activity-inline",
+		});
+		const spinner = this.activityBar.createSpan({
+			cls: "ac-activity-spinner",
+		});
+		this.activityText = this.activityBar.createSpan({
+			cls: "ac-activity-text",
+			text,
+		});
+		this.scrollToBottom();
 	}
 
 	private clearActivity(): void {
-		this.activityBar.style.display = "none";
+		if (this.activityBar && this.activityBar.parentElement) {
+			this.activityBar.remove();
+		}
 	}
 
 	private handleMsgCount = 0;
