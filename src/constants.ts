@@ -20,8 +20,8 @@ export interface AgenticCopilotSettings {
 	includeSelection: boolean;
 	/** Maximum number of concurrent sessions */
 	maxSessions: number;
-	/** Auto-apply file edits without confirmation (dangerous) */
-	autoApplyEdits: boolean;
+	/** Edit approval mode: 'approve' shows Accept/Reject buttons, 'auto-accept' applies automatically */
+	editApprovalMode: "approve" | "auto-accept";
 }
 
 export const DEFAULT_SETTINGS: AgenticCopilotSettings = {
@@ -32,5 +32,5 @@ export const DEFAULT_SETTINGS: AgenticCopilotSettings = {
 	includeActiveFile: true,
 	includeSelection: true,
 	maxSessions: 5,
-	autoApplyEdits: false,
+	editApprovalMode: "approve",
 };

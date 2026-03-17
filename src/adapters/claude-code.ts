@@ -66,6 +66,8 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 				"stream-json",
 				"--verbose",
 				"--include-partial-messages",
+				"--allowedTools",
+				"Read,Glob,Grep,Write,Edit,NotebookEdit,WebSearch,WebFetch,Bash",
 				"-p",
 				fullPrompt,
 			],

@@ -166,19 +166,23 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Danger zone
-		containerEl.createEl("h2", { text: "Advanced" });
+		// Permissions
+		containerEl.createEl("h2", { text: "Permissions" });
 
 		new Setting(containerEl)
-			.setName("Auto-apply file edits")
+			.setName("Edit approval")
 			.setDesc(
-				"WARNING: Automatically apply agent-suggested file edits without confirmation. Use with caution."
+				"Control how agent-suggested file edits are handled. 'Request approval' shows Accept/Reject buttons; 'Auto-accept' applies edits automatically."
 			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.autoApplyEdits)
-					.onChange(async (value) => {
-						this.plugin.settings.autoApplyEdits = value;
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						approve: "Request approval for edits",
+						"auto-accept": "Auto-accept edits",
+					})
+					.setValue(this.plugin.settings.editApprovalMode)
+					.onChange(async (value: "approve" | "auto-accept") => {
+						this.plugin.settings.editApprovalMode = value;
 						await this.plugin.saveSettings();
 					})
 			);

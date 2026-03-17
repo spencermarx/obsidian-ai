@@ -59,7 +59,8 @@ export default class AgenticCopilotPlugin extends Plugin {
 					this.sessionManager,
 					this.settings,
 					this.activeAdapter,
-					this.applyFileEdit.bind(this)
+					this.applyFileEdit.bind(this),
+					this.saveSettings.bind(this)
 				);
 			} else {
 				return new OnboardingView(

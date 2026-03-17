@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, App } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import { CHAT_VIEW_TYPE } from "../constants";
 import { AgentAdapter, AgentMessage, SlashCommand } from "../adapters/types";
 import { SessionManager, SessionStatus } from "../session/session-manager";
@@ -23,6 +23,7 @@ export class ChatView extends ItemView {
 		oldContent: string,
 		newContent: string
 	) => Promise<void>;
+	private onSaveSettings: () => Promise<void>;
 
 	// DOM elements
 	private messagesContainer!: HTMLElement;
@@ -49,14 +50,16 @@ export class ChatView extends ItemView {
 			filePath: string,
 			oldContent: string,
 			newContent: string
-		) => Promise<void>
+		) => Promise<void>,
+		onSaveSettings: () => Promise<void>
 	) {
 		super(leaf);
 		this.sessionManager = sessionManager;
 		this.settings = settings;
 		this.adapter = adapter;
 		this.onApplyEdit = onApplyEdit;
-		this.renderer = new ChatRenderer(this, "");
+		this.onSaveSettings = onSaveSettings;
+		this.renderer = new ChatRenderer(this, "", this.settings);
 		this.slashCommands = adapter.getSlashCommands();
 	}
 
@@ -112,6 +115,32 @@ export class ChatView extends ItemView {
 		this.statusEl.createSpan({
 			cls: "ac-status-text",
 			text: this.adapter.displayName,
+		});
+
+		// Permission dropdown (right side of header)
+		const headerRight = header.createDiv({ cls: "ac-header-right" });
+		const permSelect = headerRight.createEl("select", {
+			cls: "ac-permission-select",
+		});
+		permSelect.createEl("option", {
+			text: "Approve edits",
+			attr: { value: "approve" },
+		});
+		permSelect.createEl("option", {
+			text: "Auto-accept",
+			attr: { value: "auto-accept" },
+		});
+		permSelect.value = this.settings.editApprovalMode;
+		permSelect.addEventListener("change", async () => {
+			this.settings.editApprovalMode = permSelect.value as
+				| "approve"
+				| "auto-accept";
+			await this.onSaveSettings();
+			new Notice(
+				permSelect.value === "auto-accept"
+					? "Edits will be applied automatically"
+					: "Edits will require approval"
+			);
 		});
 
 		// Messages area
@@ -342,10 +371,46 @@ export class ChatView extends ItemView {
 		}
 
 		if (message.role === "tool") {
-			// Show tool activity
-			const toolName = message.toolUse?.name || "tool";
-			this.setActivity(`Using ${toolName}…`);
-			this.renderToolMessage(message);
+			this.setActivity(this.extractActivityText(message));
+
+			if (message.fileEdit) {
+				// File edits get their own block (needs Accept/Reject)
+				this.streamingMessageEl = null;
+				const el = this.messagesContainer.createDiv();
+				this.renderer.renderFileEditBlock(message, el);
+
+				// Auto-accept: apply immediately
+				if (this.settings.editApprovalMode === "auto-accept" && message.fileEdit.filePath) {
+					this.onApplyEdit(
+						message.fileEdit.filePath,
+						message.fileEdit.oldContent || "",
+						message.fileEdit.newContent
+					).then(() => {
+						const status = el.querySelector(".ac-file-edit-actions");
+						if (status) {
+							status.empty();
+							status.createSpan({
+								cls: "ac-file-edit-status",
+								text: "Applied",
+							});
+						}
+						el.querySelector(".ac-file-edit")?.addClass("ac-file-edit-accepted");
+					}).catch(() => {});
+				}
+			} else {
+				// Non-edit tools: render as compact chip inline
+				if (!this.streamingMessageEl) {
+					this.streamingMessageEl = this.messagesContainer.createDiv({
+						cls: "ac-message ac-message-assistant",
+					});
+					this.streamingMessageEl.createDiv({ cls: "ac-message-body" });
+				}
+				const body = this.streamingMessageEl.querySelector(".ac-message-body");
+				if (body) {
+					this.renderer.renderToolChip(message, body as HTMLElement);
+				}
+			}
+			this.scrollToBottom();
 			return;
 		}
 
@@ -456,13 +521,38 @@ export class ChatView extends ItemView {
 		this.scrollToBottom();
 	}
 
-	private async renderToolMessage(message: AgentMessage): Promise<void> {
-		// Finalize any streaming assistant message first
-		this.streamingMessageEl = null;
+	private extractActivityText(message: AgentMessage): string {
+		if (!message.toolUse) return "Working…";
+		const name = message.toolUse.name;
+		try {
+			const parsed = JSON.parse(message.toolUse.input);
+			if (name === "Read" && parsed.file_path) {
+				return `Reading ${this.shortenPath(parsed.file_path)}…`;
+			}
+			if ((name === "Write" || name === "Edit") && parsed.file_path) {
+				return `Editing ${this.shortenPath(parsed.file_path)}…`;
+			}
+			if (name === "Grep" && parsed.pattern) {
+				return `Searching for "${parsed.pattern}"…`;
+			}
+			if (name === "Glob" && parsed.pattern) {
+				return `Finding ${parsed.pattern}…`;
+			}
+			if (name === "Bash" && parsed.command) {
+				const cmd = parsed.command.split(" ")[0];
+				return `Running ${cmd}…`;
+			}
+			if (name === "WebSearch" && parsed.query) {
+				return "Searching web…";
+			}
+		} catch { /* ignore parse errors */ }
+		return `Using ${name}…`;
+	}
 
-		const el = this.messagesContainer.createDiv();
-		await this.renderer.renderMessage(message, el);
-		this.scrollToBottom();
+	private shortenPath(filePath: string): string {
+		const parts = filePath.split("/");
+		if (parts.length <= 2) return filePath;
+		return parts.slice(-2).join("/");
 	}
 
 	private onGenerationComplete(): void {

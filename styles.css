@@ -30,10 +30,46 @@
 .ac-chat-header {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	padding: 10px 16px;
 	border-bottom: 1px solid var(--background-modifier-border);
 	background: var(--background-primary);
 	flex-shrink: 0;
+}
+
+.ac-header-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.ac-permission-select {
+	appearance: none;
+	-webkit-appearance: none;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 4px 24px 4px 8px;
+	font-size: 11px;
+	color: var(--text-muted);
+	cursor: pointer;
+	outline: none;
+	font-family: var(--font-interface);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 6px center;
+	background-size: 12px;
+	transition: border-color 0.15s ease;
+}
+
+.ac-permission-select:hover {
+	border-color: var(--interactive-accent);
+}
+
+.ac-permission-select:focus {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.15);
 }
 
 .ac-status {
@@ -424,6 +460,45 @@
 	white-space: pre-wrap;
 	word-break: break-all;
 	overflow-x: auto;
+}
+
+/* ---- Tool Chips (inline compact) ---- */
+.ac-tool-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	margin: 2px 0;
+	border-radius: 6px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	font-size: 11px;
+	line-height: 1.4;
+	max-width: 100%;
+}
+
+.ac-tool-chip-icon {
+	font-size: 12px;
+	flex-shrink: 0;
+	opacity: 0.7;
+}
+
+.ac-tool-chip-name {
+	font-family: var(--font-monospace);
+	font-weight: 500;
+	font-size: 11px;
+	color: var(--interactive-accent);
+	flex-shrink: 0;
+}
+
+.ac-tool-chip-summary {
+	color: var(--text-muted);
+	font-family: var(--font-monospace);
+	font-size: 11px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 /* ---- File Edit Blocks ---- */
