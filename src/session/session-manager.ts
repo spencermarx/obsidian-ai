@@ -1,7 +1,12 @@
 import { spawn, ChildProcess } from "child_process";
 import { AgentAdapter, AgentMessage, VaultContext } from "../adapters/types";
 import { MessageQueue } from "./message-queue";
-import { getShell, isWindows, getExpandedPath } from "../utils/platform";
+import {
+	getShell,
+	isWindows,
+	getExpandedPath,
+	whichBinary,
+} from "../utils/platform";
 
 export type SessionStatus = "idle" | "running" | "error" | "terminated";
 
@@ -125,9 +130,15 @@ export class SessionManager {
 			cwd: context.vaultPath,
 		});
 
+		// Resolve the full binary path before spawning.
+		// We must NOT use shell: true because the shell performs word-splitting
+		// on the prompt argument, breaking multi-word prompts.
+		const resolvedBinary =
+			(await whichBinary(spawnArgs.command)) || spawnArgs.command;
+
 		console.log(
-			"[agentic-copilot] spawning:",
-			spawnArgs.command,
+			"[agentic-copilot][PIPE-1] spawning:",
+			resolvedBinary,
 			spawnArgs.args.map((a) =>
 				a.length > 80 ? a.slice(0, 80) + "…" : a
 			)
@@ -143,12 +154,12 @@ export class SessionManager {
 				...spawnArgs.env,
 			};
 			const useDetached = !isWindows();
-			const proc = spawn(spawnArgs.command, spawnArgs.args, {
+			const proc = spawn(resolvedBinary, spawnArgs.args, {
 				cwd: context.vaultPath,
 				env: expandedEnv,
-				// Use shell on all platforms so the expanded PATH resolves
-				// binaries installed via nvm, homebrew, etc.
-				shell: isWindows() ? getShell() : true,
+				// NO shell: true — it word-splits the prompt, breaking everything.
+				// We resolve the full binary path above via whichBinary() instead.
+				shell: isWindows() ? getShell() : false,
 				stdio: ["pipe", "pipe", "pipe"],
 				// Detach on Unix so we get a process group we can kill
 				// as a unit (prevents orphaned agent processes).
