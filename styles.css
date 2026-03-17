@@ -77,44 +77,61 @@
 	50% { opacity: 0.4; }
 }
 
-/* Header right: session ID + copy */
-.ac-header-right {
-	display: flex;
+/* Header: session chip */
+.ac-session-chip {
+	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	flex-shrink: 0;
-}
-
-.ac-session-id {
-	font-family: var(--font-monospace);
-	font-size: 11px;
-	color: var(--text-faint);
-	letter-spacing: 0.3px;
-}
-
-.ac-session-copy {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 24px;
-	height: 24px;
+	padding: 3px 8px;
 	border-radius: 6px;
-	background: transparent;
-	border: none;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
 	cursor: pointer;
-	color: var(--text-faint);
 	transition: all 0.15s ease;
-	padding: 0;
+	flex-shrink: 0;
+	user-select: none;
 }
 
-.ac-session-copy:hover {
-	color: var(--text-muted);
+.ac-session-chip:hover {
+	border-color: var(--text-faint);
 	background: var(--background-modifier-hover);
 }
 
-.ac-session-copy svg {
-	width: 13px;
-	height: 13px;
+.ac-session-chip-copied {
+	border-color: var(--text-success, #10b981) !important;
+}
+
+.ac-session-chip-terminal {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.ac-session-chip-terminal svg {
+	width: 11px;
+	height: 11px;
+}
+
+.ac-session-chip-id {
+	font-family: var(--font-monospace);
+	font-size: 10px;
+	color: var(--text-muted);
+	letter-spacing: 0.3px;
+}
+
+.ac-session-chip-copy {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+}
+
+.ac-session-chip-copy svg {
+	width: 10px;
+	height: 10px;
+}
+
+.ac-session-chip-copied .ac-session-chip-copy {
+	color: var(--text-success, #10b981);
 }
 
 /* ---- Messages Area ---- */
@@ -199,6 +216,77 @@
 	overflow-wrap: break-word;
 	word-break: break-word;
 	min-width: 0;
+}
+
+/* ---- Resume Session ---- */
+.ac-resume-section {
+	margin-top: 16px;
+}
+
+.ac-resume-link {
+	appearance: none;
+	background: none;
+	border: none;
+	padding: 0;
+	color: var(--text-faint);
+	font-size: 11px;
+	cursor: pointer;
+	font-family: var(--font-interface);
+	transition: color 0.15s ease;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.ac-resume-link:hover {
+	color: var(--text-muted);
+}
+
+.ac-resume-form {
+	display: flex;
+	gap: 6px;
+	width: 100%;
+	max-width: 280px;
+}
+
+.ac-resume-input {
+	flex: 1;
+	min-width: 0;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: 11px;
+	outline: none;
+	transition: border-color 0.15s ease;
+}
+
+.ac-resume-input:focus {
+	border-color: var(--interactive-accent);
+}
+
+.ac-resume-input::placeholder {
+	color: var(--text-faint);
+}
+
+.ac-resume-btn {
+	appearance: none;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+	border-radius: 6px;
+	padding: 4px 10px;
+	font-size: 11px;
+	font-weight: 500;
+	cursor: pointer;
+	font-family: var(--font-interface);
+	white-space: nowrap;
+	transition: background 0.15s ease;
+}
+
+.ac-resume-btn:hover {
+	background: var(--interactive-accent-hover);
 }
 
 /* ---- Message Bubbles ---- */
