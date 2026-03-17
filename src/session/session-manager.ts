@@ -173,9 +173,22 @@ export class SessionManager {
 
 			session.process = proc;
 
+			// Close stdin immediately so the CLI doesn't wait for input.
+			// With -p (prompt) mode the prompt is in args, not stdin.
+			// An open stdin pipe can cause the process to hang.
+			if (proc.stdin) {
+				proc.stdin.end();
+			}
+
 			console.log(
 				"[agentic-copilot] process spawned, pid:",
-				proc.pid
+				proc.pid,
+				"stdin closed:",
+				proc.stdin?.destroyed ?? "no stdin",
+				"stdout readable:",
+				!!proc.stdout,
+				"stderr readable:",
+				!!proc.stderr
 			);
 
 			// Parse stdout through the adapter.
