@@ -125,11 +125,18 @@ export class SessionManager {
 			cwd: context.vaultPath,
 		});
 
+		console.log(
+			"[agentic-copilot] spawning:",
+			spawnArgs.command,
+			spawnArgs.args.map((a) =>
+				a.length > 80 ? a.slice(0, 80) + "…" : a
+			)
+		);
+
 		// Spawn the process
 		try {
 			this.setStatus(session, "running");
 
-			const shell = getShell();
 			const expandedEnv = {
 				...process.env,
 				PATH: getExpandedPath(),
@@ -139,7 +146,9 @@ export class SessionManager {
 			const proc = spawn(spawnArgs.command, spawnArgs.args, {
 				cwd: context.vaultPath,
 				env: expandedEnv,
-				shell: isWindows() ? shell : true,
+				// Use shell on all platforms so the expanded PATH resolves
+				// binaries installed via nvm, homebrew, etc.
+				shell: isWindows() ? getShell() : true,
 				stdio: ["pipe", "pipe", "pipe"],
 				// Detach on Unix so we get a process group we can kill
 				// as a unit (prevents orphaned agent processes).
@@ -153,20 +162,43 @@ export class SessionManager {
 
 			session.process = proc;
 
-			// Parse stdout through the adapter
+			console.log(
+				"[agentic-copilot] process spawned, pid:",
+				proc.pid
+			);
+
+			// Parse stdout through the adapter.
+			// Catch errors so a crash in the stream parser is visible.
 			if (proc.stdout) {
-				this.consumeStream(session, proc);
+				this.consumeStream(session, proc).catch((err) => {
+					const msg =
+						err instanceof Error
+							? err.message
+							: "Stream parsing failed";
+					console.error(
+						"[agentic-copilot] consumeStream error:",
+						err
+					);
+					this.emit({
+						sessionId,
+						type: "error",
+						error: msg,
+					});
+				});
 			}
 
-			// Capture stderr for error reporting
+			// Capture stderr for error reporting and debugging
 			let stderrBuffer = "";
 			if (proc.stderr) {
 				proc.stderr.on("data", (chunk) => {
-					stderrBuffer += chunk.toString();
+					const text = chunk.toString();
+					stderrBuffer += text;
+					console.log("[agentic-copilot] stderr:", text.trim());
 				});
 			}
 
 			proc.on("error", (err) => {
+				console.error("[agentic-copilot] process error:", err);
 				session.error = err.message;
 				this.setStatus(session, "error");
 				this.emit({
@@ -177,6 +209,10 @@ export class SessionManager {
 			});
 
 			proc.on("close", (code) => {
+				console.log(
+					"[agentic-copilot] process closed, code:",
+					code
+				);
 				session.messageQueue.flush();
 				session.process = null;
 
@@ -200,6 +236,7 @@ export class SessionManager {
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : "Failed to spawn process";
+			console.error("[agentic-copilot] spawn error:", err);
 			session.error = message;
 			this.setStatus(session, "error");
 			this.emit({ sessionId, type: "error", error: message });
@@ -252,16 +289,36 @@ export class SessionManager {
 	): Promise<void> {
 		if (!proc.stdout) return;
 
+		let messageCount = 0;
 		try {
 			for await (const message of session.adapter.parseOutputStream(
 				proc.stdout
 			)) {
 				if (session.process !== proc) break; // Session was restarted
-				session.messageQueue.push(message);
+				messageCount++;
+				try {
+					session.messageQueue.push(message);
+				} catch (pushErr) {
+					// A listener error must not kill the stream loop
+					console.error(
+						"[agentic-copilot] messageQueue.push error:",
+						pushErr
+					);
+				}
 			}
-		} catch {
-			// Stream ended or errored — handled by 'close' event
+		} catch (err) {
+			console.error(
+				"[agentic-copilot] stream consumption error after",
+				messageCount,
+				"messages:",
+				err
+			);
 		}
+
+		console.log(
+			"[agentic-copilot] stream ended, total messages:",
+			messageCount
+		);
 	}
 
 	/**

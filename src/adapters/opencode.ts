@@ -12,8 +12,8 @@ import { formatContextForPrompt } from "../utils/vault-context";
 /**
  * Adapter for Opencode CLI.
  *
- * Uses `opencode run` for one-shot prompts.
- * Output is streamed as plain text from stdout.
+ * Uses `opencode -p` for headless one-shot prompts.
+ * Output is plain text (or JSON with -f json) from stdout.
  */
 export class OpencodeAdapter implements AgentAdapter {
 	readonly id = "opencode";
@@ -55,7 +55,7 @@ export class OpencodeAdapter implements AgentAdapter {
 
 		return {
 			command: this.binaryName,
-			args: ["run", fullPrompt],
+			args: ["-p", fullPrompt, "-q"],
 		};
 	}
 
