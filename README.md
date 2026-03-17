@@ -292,6 +292,22 @@ npm run build
 
 Outputs: `main.js` (single bundled file, ~56KB).
 
+### Releasing a New Version
+
+A GitHub Actions workflow handles the entire release process:
+
+```bash
+# 1. Bump version in manifest.json and versions.json
+npm version patch   # 1.0.0 → 1.0.1 (or: minor, major)
+
+# 2. Push the tag — this triggers the release workflow
+git push --follow-tags
+```
+
+The workflow builds the plugin and creates a GitHub Release with `main.js`, `manifest.json`, `styles.css`, and a zip archive attached.
+
+> **Important**: The release tag must be the bare version number (`1.0.1`), not prefixed with `v`. This is required for both BRAT and the Obsidian community plugin system.
+
 ### Project Structure
 
 ```
