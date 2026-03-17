@@ -7,7 +7,9 @@ import {
 	App,
 	FuzzyMatch,
 	TFile,
+	Platform,
 } from "obsidian";
+import { exec } from "child_process";
 import {
 	CHAT_VIEW_TYPE,
 	DEFAULT_SETTINGS,
@@ -25,6 +27,7 @@ import { ChatView } from "./views/chat-view";
 import { OnboardingView } from "./views/onboarding-view";
 import { AgenticCopilotSettingTab } from "./settings";
 import { getVaultContext } from "./utils/vault-context";
+import { getExpandedPath } from "./utils/platform";
 
 /**
  * Agentic Copilot — Obsidian Plugin
@@ -344,6 +347,19 @@ export default class AgenticCopilotPlugin extends Plugin {
 			},
 		});
 
+		// Open agent in system terminal (interactive shell)
+		this.addCommand({
+			id: "open-in-terminal",
+			name: "Open agent in terminal (interactive)",
+			callback: () => {
+				if (!this.activeAdapter) {
+					new Notice("No agent configured");
+					return;
+				}
+				this.openAgentInTerminal();
+			},
+		});
+
 		// Register editor context menu
 		this.registerEvent(
 			this.app.workspace.on("editor-menu", (menu, editor) => {
@@ -395,6 +411,85 @@ export default class AgenticCopilotPlugin extends Plugin {
 
 	private async askAboutSelection(selection: string): Promise<void> {
 		await this.sendToChat(selection);
+	}
+
+	/**
+	 * Launch the active agent's CLI in the system terminal for a fully
+	 * interactive session. Uses the vault root as the working directory.
+	 */
+	private openAgentInTerminal(): void {
+		if (!this.activeAdapter) return;
+
+		const adapter = this.app.vault.adapter as {
+			getBasePath?: () => string;
+		};
+		const vaultPath =
+			typeof adapter.getBasePath === "function"
+				? adapter.getBasePath()
+				: "";
+
+		const binary = this.activeAdapter.binaryName;
+		const expandedPath = getExpandedPath();
+
+		if (Platform.isMacOS) {
+			// macOS: open Terminal.app with the command
+			const script = `tell application "Terminal"
+				activate
+				do script "export PATH='${expandedPath}'; cd '${vaultPath}' && ${binary}"
+			end tell`;
+			exec(`osascript -e '${script.replace(/'/g, "'\\''")}'`, (err) => {
+				if (err) {
+					new Notice(
+						`Failed to open terminal: ${err.message}`
+					);
+				}
+			});
+		} else if (Platform.isLinux) {
+			// Linux: try common terminal emulators
+			const terminals = [
+				"gnome-terminal",
+				"konsole",
+				"xfce4-terminal",
+				"xterm",
+			];
+			const tryTerminal = (idx: number) => {
+				if (idx >= terminals.length) {
+					new Notice(
+						"Could not find a terminal emulator. Please open a terminal manually."
+					);
+					return;
+				}
+				const term = terminals[idx];
+				const cmd =
+					term === "gnome-terminal"
+						? `${term} -- bash -c "export PATH='${expandedPath}'; cd '${vaultPath}' && ${binary}; exec bash"`
+						: `${term} -e "bash -c \\"export PATH='${expandedPath}'; cd '${vaultPath}' && ${binary}; exec bash\\""`;
+				exec(cmd, (err) => {
+					if (err) tryTerminal(idx + 1);
+				});
+			};
+			tryTerminal(0);
+		} else if (Platform.isWin) {
+			// Windows: open cmd.exe
+			exec(
+				`start cmd.exe /k "cd /d "${vaultPath}" && ${binary}"`,
+				(err) => {
+					if (err) {
+						new Notice(
+							`Failed to open terminal: ${err.message}`
+						);
+					}
+				}
+			);
+		} else {
+			new Notice(
+				"Terminal launch is not supported on this platform. Please open a terminal manually."
+			);
+		}
+
+		new Notice(
+			`Opening ${this.activeAdapter.displayName} in terminal…`
+		);
 	}
 
 	/**

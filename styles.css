@@ -246,6 +246,72 @@
 	font-size: var(--font-ui-smaller);
 }
 
+/* ---- Thinking / Reasoning (Collapsible) ---- */
+.ac-message-thinking {
+	background: transparent;
+	padding: 0;
+	border: none;
+}
+
+.ac-thinking {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	overflow: hidden;
+}
+
+.ac-thinking-summary {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	cursor: pointer;
+	background: var(--background-secondary-alt);
+	font-size: var(--font-ui-small);
+	user-select: none;
+	color: var(--text-muted);
+}
+
+.ac-thinking-summary:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ac-thinking-icon {
+	font-weight: 600;
+	font-size: var(--font-ui-smaller);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--text-faint);
+}
+
+.ac-thinking[open] .ac-thinking-icon::after {
+	content: " ...";
+	animation: ac-pulse 1.5s ease-in-out infinite;
+}
+
+.ac-thinking:not([open]) .ac-thinking-icon::after {
+	content: "";
+}
+
+.ac-thinking-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+
+.ac-thinking-content {
+	padding: 8px 10px;
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.5;
+	color: var(--text-muted);
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.ac-thinking-content .ac-message-body {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
 /* ---- Tool Use (Collapsible) ---- */
 .ac-tool-use {
 	margin: 4px 0;

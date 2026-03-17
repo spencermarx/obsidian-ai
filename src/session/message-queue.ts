@@ -4,13 +4,14 @@ import { AgentMessage } from "../adapters/types";
  * Buffers streaming message chunks and emits complete messages.
  *
  * For streaming adapters that emit partial text deltas, this accumulates
- * them into a single assistant message until a new message role appears
- * or the stream ends.
+ * them into a single assistant message until a new message role appears,
+ * the thinking/text mode switches, or the stream ends.
  */
 export class MessageQueue {
 	private messages: AgentMessage[] = [];
 	private currentBuffer: string = "";
 	private currentRole: AgentMessage["role"] | null = null;
+	private currentIsThinking = false;
 	private listeners: Array<(msg: AgentMessage) => void> = [];
 
 	/** Register a callback for each complete message. */
@@ -25,25 +26,30 @@ export class MessageQueue {
 
 	/** Push a parsed message from the adapter's stream parser. */
 	push(message: AgentMessage): void {
-		// If this is a text delta for the same role, accumulate
+		const msgIsThinking = !!message.isThinking;
+
+		// If this is a text/thinking delta for the same role AND same
+		// thinking state, accumulate into the current buffer.
 		if (
 			message.role === "assistant" &&
 			this.currentRole === "assistant" &&
 			!message.toolUse &&
-			!message.fileEdit
+			!message.fileEdit &&
+			msgIsThinking === this.currentIsThinking
 		) {
 			this.currentBuffer += message.content;
 			// Emit an update for the accumulated message
 			const accumulated: AgentMessage = {
 				role: "assistant",
 				content: this.currentBuffer,
+				isThinking: msgIsThinking || undefined,
 				timestamp: message.timestamp,
 			};
 			this.emit(accumulated);
 			return;
 		}
 
-		// Flush any buffered text before switching roles
+		// Flush any buffered text before switching roles or thinking state
 		this.flush();
 
 		// Tool use and file edit messages are emitted immediately
@@ -55,6 +61,7 @@ export class MessageQueue {
 
 		// Start a new assistant buffer
 		this.currentRole = "assistant";
+		this.currentIsThinking = msgIsThinking;
 		this.currentBuffer = message.content;
 		this.emit(message);
 	}
@@ -65,11 +72,13 @@ export class MessageQueue {
 			const msg: AgentMessage = {
 				role: this.currentRole,
 				content: this.currentBuffer,
+				isThinking: this.currentIsThinking || undefined,
 				timestamp: Date.now(),
 			};
 			this.messages.push(msg);
 			this.currentBuffer = "";
 			this.currentRole = null;
+			this.currentIsThinking = false;
 		}
 	}
 
@@ -80,6 +89,7 @@ export class MessageQueue {
 			result.push({
 				role: this.currentRole,
 				content: this.currentBuffer,
+				isThinking: this.currentIsThinking || undefined,
 				timestamp: Date.now(),
 			});
 		}
@@ -91,6 +101,7 @@ export class MessageQueue {
 		this.messages = [];
 		this.currentBuffer = "";
 		this.currentRole = null;
+		this.currentIsThinking = false;
 	}
 
 	private emit(message: AgentMessage): void {

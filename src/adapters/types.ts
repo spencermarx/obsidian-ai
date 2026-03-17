@@ -4,6 +4,8 @@ import { Readable } from "stream";
 export interface AgentMessage {
 	role: "user" | "assistant" | "system" | "tool";
 	content: string;
+	/** True when this message contains the agent's internal reasoning. */
+	isThinking?: boolean;
 	/** Present when the agent invoked a tool. */
 	toolUse?: {
 		name: string;
