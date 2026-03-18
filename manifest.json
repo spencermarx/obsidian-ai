@@ -1,9 +1,9 @@
 {
 	"id": "agentic-copilot",
 	"name": "Agentic Copilot",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.5.0",
-	"description": "Integrate agentic CLI tools (Claude Code, Opencode, Gemini CLI) directly into Obsidian as a workspace copilot.",
+	"description": "Integrate agentic CLI tools (Claude Code, Opencode, Gemini CLI) as a workspace copilot with streaming chat, vault-aware context, and edit diffs.",
 	"author": "Spencer Marx",
 	"authorUrl": "https://github.com/spencermarx",
 	"isDesktopOnly": true
