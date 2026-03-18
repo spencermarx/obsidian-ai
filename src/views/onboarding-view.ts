@@ -25,7 +25,7 @@ export class OnboardingView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Agentic Copilot — Setup";
+		return "Agentic copilot — Setup";
 	}
 
 	getIcon(): string {
@@ -49,7 +49,7 @@ export class OnboardingView extends ItemView {
 	}
 
 	private renderAgentSelection(container: HTMLElement): void {
-		container.createEl("h2", { text: "Choose Your Agent" });
+		container.createEl("h2", { text: "Choose your agent" });
 		container.createEl("p", {
 			text: "The following agentic CLI tools were detected on your system:",
 		});
@@ -75,7 +75,7 @@ export class OnboardingView extends ItemView {
 
 			const selectBtn = card.createEl("button", {
 				cls: "ac-btn ac-btn-primary",
-				text: "Use This Agent",
+				text: "Use this agent",
 			});
 			selectBtn.addEventListener("click", () => {
 				this.onSelectAgent(agent.adapter.id);
@@ -84,9 +84,9 @@ export class OnboardingView extends ItemView {
 	}
 
 	private renderNoAgents(container: HTMLElement): void {
-		container.createEl("h2", { text: "No Agentic CLI Tools Found" });
+		container.createEl("h2", { text: "No agentic CLI tools found" });
 		container.createEl("p", {
-			text: "Agentic Copilot needs a CLI agent installed on your system. Install one of the following:",
+			text: "Agentic copilot needs a CLI agent installed on your system. Install one of the following:",
 		});
 
 		const tools = container.createDiv({ cls: "ac-install-list" });
@@ -120,7 +120,7 @@ export class OnboardingView extends ItemView {
 
 		// Manual path option
 		container.createEl("p", {
-			text: 'You can also configure a custom binary path in Settings → Agentic Copilot.',
+			text: 'You can also configure a custom binary path in Settings → Agentic copilot.',
 		});
 	}
 }
