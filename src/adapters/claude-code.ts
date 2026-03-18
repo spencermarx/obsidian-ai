@@ -103,12 +103,12 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			const raw = chunk.toString();
 			// [PIPE-2] Log raw stdout data (first 3 chunks fully, then just sizes)
 			if (chunkCount <= 3) {
-				console.log(
+				console.debug(
 					`[agentic-copilot][PIPE-2] stdout chunk #${chunkCount} (${raw.length} bytes):`,
 					raw.slice(0, 300)
 				);
 			} else if (chunkCount % 50 === 0) {
-				console.log(
+				console.debug(
 					`[agentic-copilot][PIPE-2] stdout chunk #${chunkCount} (${raw.length} bytes)`
 				);
 			}
@@ -127,7 +127,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 					event = JSON.parse(trimmed);
 				} catch {
 					// [PIPE-3] Non-JSON line
-					console.log(
+					console.debug(
 						`[agentic-copilot][PIPE-3] non-JSON line #${lineCount}:`,
 						trimmed.slice(0, 150)
 					);
@@ -144,12 +144,10 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 				const evtType = (event.type as string) || "unknown";
 				const innerType =
 					evtType === "stream_event"
-						? (
-								event.event as Record<string, unknown>
-							)?.type || "?"
+						? String((event.event as Record<string, unknown>)?.type ?? "?")
 						: "";
 				if (lineCount <= 10 || lineCount % 20 === 0) {
-					console.log(
+					console.debug(
 						`[agentic-copilot][PIPE-3] JSON line #${lineCount}: type=${evtType}${innerType ? ` inner=${innerType}` : ""}`
 					);
 				}
@@ -162,7 +160,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 					for (const msg of messages) {
 						yieldCount++;
 						if (yieldCount <= 5 || yieldCount % 20 === 0) {
-							console.log(
+							console.debug(
 								`[agentic-copilot][PIPE-4] yield #${yieldCount}: role=${msg.role} thinking=${!!msg.isThinking} len=${msg.content.length}`
 							);
 						}
@@ -179,7 +177,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			}
 		}
 
-		console.log(
+		console.debug(
 			`[agentic-copilot][PIPE-2] stdout ended: ${chunkCount} chunks, ${lineCount} lines, ${yieldCount} messages yielded`
 		);
 
@@ -395,7 +393,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			const msg: AgentMessage = {
 				role: "tool",
 				content: `Tool: ${name}`,
-				toolUse: { name, input, output: output as string | undefined },
+				toolUse: { name, input, output },
 				timestamp: Date.now(),
 			};
 

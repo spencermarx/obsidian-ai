@@ -22,7 +22,7 @@ function findMarkdownView(app: App): MarkdownView | null {
 
 	app.workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
 		if (!(leaf.view instanceof MarkdownView)) return;
-		const view = leaf.view as MarkdownView;
+		const view = leaf.view;
 
 		// Prefer the leaf whose file matches the active file
 		if (activeFile && view.file && view.file.path === activeFile.path) {
