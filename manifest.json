@@ -6,6 +6,5 @@
 	"description": "Integrate agentic CLI tools (Claude Code, Opencode, Gemini CLI) directly into Obsidian as a workspace copilot.",
 	"author": "Spencer Marx",
 	"authorUrl": "https://github.com/spencermarx",
-	"isDesktopOnly": true,
-	"fundingUrl": ""
+	"isDesktopOnly": true
 }

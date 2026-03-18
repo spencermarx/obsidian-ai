@@ -242,18 +242,25 @@ export class ChatView extends ItemView {
 		const welcome = this.messagesContainer.createDiv({
 			cls: "ac-welcome",
 		});
-		welcome.createEl("h3", { text: "Agentic Copilot" });
-		welcome.createEl("p", {
+
+		const header = welcome.createDiv({ cls: "ac-welcome-header" });
+		header.createEl("h3", { text: "Agentic Copilot" });
+		header.createEl("p", {
 			text: `Connected to ${this.adapter.displayName}. Ask anything about your vault.`,
 		});
 
 		if (this.slashCommands.length > 0) {
-			const cmdList = welcome.createDiv({ cls: "ac-welcome-commands" });
-			cmdList.createEl("p", {
+			const cmdSection = welcome.createDiv({
+				cls: "ac-welcome-commands",
+			});
+			cmdSection.createEl("p", {
 				cls: "ac-welcome-commands-label",
 				text: "Commands",
 			});
-			for (const cmd of this.slashCommands.slice(0, 5)) {
+			const cmdList = cmdSection.createDiv({
+				cls: "ac-welcome-cmd-list",
+			});
+			for (const cmd of this.slashCommands) {
 				const item = cmdList.createDiv({ cls: "ac-welcome-cmd" });
 				item.createSpan({
 					cls: "ac-welcome-cmd-name",
@@ -262,6 +269,11 @@ export class ChatView extends ItemView {
 				item.createSpan({
 					cls: "ac-welcome-cmd-desc",
 					text: cmd.description,
+				});
+				item.addEventListener("click", () => {
+					this.inputEl.value = cmd.name + " ";
+					this.inputEl.focus();
+					this.autoResizeInput();
 				});
 			}
 		}
