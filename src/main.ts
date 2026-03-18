@@ -1,11 +1,9 @@
 import {
 	Plugin,
-	WorkspaceLeaf,
 	Notice,
 	MarkdownView,
 	FuzzySuggestModal,
 	App,
-	FuzzyMatch,
 	TFile,
 	Platform,
 } from "obsidian";
@@ -26,7 +24,6 @@ import { SessionManager } from "./session/session-manager";
 import { ChatView } from "./views/chat-view";
 import { OnboardingView } from "./views/onboarding-view";
 import { AgenticCopilotSettingTab } from "./settings";
-import { getVaultContext } from "./utils/vault-context";
 import { getExpandedPath } from "./utils/platform";
 
 /**
@@ -69,9 +66,9 @@ export default class AgenticCopilotPlugin extends Plugin {
 					this.detectedAgents,
 					(agentId: string) => {
 						this.settings.selectedAgent = agentId;
-						this.saveSettings();
+						void this.saveSettings();
 						this.activeAdapter = this.resolveAdapter();
-						this.activateChatView();
+						void this.activateChatView();
 					}
 				);
 			}
@@ -90,8 +87,8 @@ export default class AgenticCopilotPlugin extends Plugin {
 		this.registerCommands();
 
 		// Ribbon icon
-		this.addRibbonIcon("bot", "Open Agentic Copilot", () => {
-			this.activateChatView();
+		this.addRibbonIcon("bot", "Open agentic copilot", () => {
+			void this.activateChatView();
 		});
 
 		// Notify user
@@ -104,7 +101,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 		}
 	}
 
-	async onunload(): Promise<void> {
+	onunload(): void {
 		this.sessionManager.destroyAll();
 	}
 
@@ -160,7 +157,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 			this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
 
 		if (existing.length > 0) {
-			this.app.workspace.revealLeaf(existing[0]);
+			void this.app.workspace.revealLeaf(existing[0]);
 			return;
 		}
 
@@ -170,7 +167,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 				type: CHAT_VIEW_TYPE,
 				active: true,
 			});
-			this.app.workspace.revealLeaf(leaf);
+			void this.app.workspace.revealLeaf(leaf);
 		}
 	}
 
@@ -193,7 +190,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 				type: CHAT_VIEW_TYPE,
 				active: true,
 			});
-			this.app.workspace.revealLeaf(leaf);
+			void this.app.workspace.revealLeaf(leaf);
 		}
 	}
 
@@ -205,14 +202,14 @@ export default class AgenticCopilotPlugin extends Plugin {
 		this.addCommand({
 			id: "open-chat",
 			name: "Open chat panel",
-			callback: () => this.activateChatView(),
+			callback: () => { void this.activateChatView(); },
 		});
 
 		// Open new chat session
 		this.addCommand({
 			id: "new-chat-session",
 			name: "Open new chat session",
-			callback: () => this.openNewChatView(),
+			callback: () => { void this.openNewChatView(); },
 		});
 
 		// Ask about current file
@@ -224,7 +221,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 					this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (!view?.file) return false;
 				if (!checking) {
-					this.askAboutFile(view.file.path);
+					void this.askAboutFile(view.file.path);
 				}
 				return true;
 			},
@@ -238,7 +235,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 				const selection = editor.getSelection();
 				if (!selection) return false;
 				if (!checking) {
-					this.askAboutSelection(selection);
+					void this.askAboutSelection(selection);
 				}
 				return true;
 			},
@@ -252,7 +249,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 				const selection = editor.getSelection();
 				if (!selection) return false;
 				if (!checking) {
-					this.sendToChat(
+					void this.sendToChat(
 						`Explain the following:\n\n${selection}`
 					);
 				}
@@ -268,7 +265,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 				const selection = editor.getSelection();
 				if (!selection) return false;
 				if (!checking) {
-					this.sendToChat(
+					void this.sendToChat(
 						`Refactor the following code for better readability and maintainability:\n\n${selection}`
 					);
 				}
@@ -278,8 +275,8 @@ export default class AgenticCopilotPlugin extends Plugin {
 
 		// Run slash command (fuzzy suggest)
 		this.addCommand({
-			id: "run-slash-command",
-			name: "Run agent slash command",
+			id: "run-slash",
+			name: "Run agent slash",
 			callback: () => {
 				if (!this.activeAdapter) {
 					new Notice("No agent configured");
@@ -291,7 +288,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 					return;
 				}
 				new SlashCommandModal(this.app, commands, (cmd) => {
-					this.sendToChat(cmd.name);
+					void this.sendToChat(cmd.name);
 				}).open();
 			},
 		});
@@ -327,7 +324,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 					this.detectedAgents,
 					(agent) => {
 						this.settings.selectedAgent = agent.adapter.id;
-						this.saveSettings();
+						void this.saveSettings();
 						this.activeAdapter = agent.adapter;
 
 						// Update all open chat views
@@ -369,18 +366,18 @@ export default class AgenticCopilotPlugin extends Plugin {
 				if (!selection) return;
 
 				menu.addItem((item) => {
-					item.setTitle("Ask Agent")
+					item.setTitle("Ask agent")
 						.setIcon("bot")
 						.onClick(() => {
-							this.askAboutSelection(selection);
+							void this.askAboutSelection(selection);
 						});
 				});
 
 				menu.addItem((item) => {
-					item.setTitle("Explain Selection")
+					item.setTitle("Explain selection")
 						.setIcon("help-circle")
 						.onClick(() => {
-							this.sendToChat(
+							void this.sendToChat(
 								`Explain the following:\n\n${selection}`
 							);
 						});
@@ -400,7 +397,7 @@ export default class AgenticCopilotPlugin extends Plugin {
 			const leaves =
 				this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
 			if (leaves.length > 0 && leaves[0].view instanceof ChatView) {
-				leaves[0].view.injectPrompt(prompt);
+				void leaves[0].view.injectPrompt(prompt);
 			}
 		}, 100);
 	}
