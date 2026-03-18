@@ -33,7 +33,7 @@ export class MessageQueue {
 
 		// [PIPE-5] Log push calls
 		if (this.pushCount <= 5 || this.pushCount % 20 === 0) {
-			console.log(
+			console.debug(
 				`[agentic-copilot][PIPE-5] MQ.push #${this.pushCount}: role=${message.role} thinking=${msgIsThinking} len=${message.content.length} listeners=${this.listeners.length}`
 			);
 		}

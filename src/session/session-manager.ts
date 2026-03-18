@@ -146,7 +146,7 @@ export class SessionManager {
 		const resolvedBinary =
 			(await whichBinary(spawnArgs.command)) || spawnArgs.command;
 
-		console.log(
+		console.debug(
 			"[agentic-copilot][PIPE-1] spawning:",
 			resolvedBinary,
 			spawnArgs.args.map((a) =>
@@ -190,7 +190,7 @@ export class SessionManager {
 				proc.stdin.end();
 			}
 
-			console.log(
+			console.debug(
 				"[agentic-copilot] process spawned, pid:",
 				proc.pid,
 				"stdin closed:",
@@ -227,7 +227,7 @@ export class SessionManager {
 				proc.stderr.on("data", (chunk) => {
 					const text = chunk.toString();
 					stderrBuffer += text;
-					console.log("[agentic-copilot] stderr:", text.trim());
+					console.debug("[agentic-copilot] stderr:", text.trim());
 				});
 			}
 
@@ -243,7 +243,7 @@ export class SessionManager {
 			});
 
 			proc.on("close", (code) => {
-				console.log(
+				console.debug(
 					"[agentic-copilot] process closed, code:",
 					code
 				);
@@ -349,7 +349,7 @@ export class SessionManager {
 			);
 		}
 
-		console.log(
+		console.debug(
 			"[agentic-copilot] stream ended, total messages:",
 			messageCount
 		);
@@ -431,7 +431,7 @@ export class SessionManager {
 			(this.emitCount <= 5 || this.emitCount % 20 === 0)
 		) {
 			const msg = event.message;
-			console.log(
+			console.debug(
 				`[agentic-copilot][PIPE-7] SM.emit #${this.emitCount}: type=${event.type} role=${msg?.role} thinking=${!!msg?.isThinking} listeners=${this.listeners.length}`
 			);
 		}
