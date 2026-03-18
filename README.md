@@ -1,15 +1,51 @@
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/spencermarx/obsidian-ai?style=flat-square&color=blue" alt="Latest Release" />
-  <img src="https://img.shields.io/badge/obsidian-%3E%3D1.5.0-blueviolet?style=flat-square" alt="Obsidian" />
-  <img src="https://img.shields.io/github/license/spencermarx/obsidian-ai?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/platform-desktop%20only-orange?style=flat-square" alt="Desktop Only" />
+  <img src="assets/obsidian-ai-screenshot.png" alt="Agentic Copilot — Claude Code running inside Obsidian" width="800" />
 </p>
 
-# Agentic Copilot
+<h1 align="center">Agentic Copilot</h1>
 
-> Bring your agentic CLI tools — Claude Code, Opencode, Gemini CLI, and more — directly into Obsidian as a workspace copilot. Auto-detects your environment. Zero configuration required.
+<p align="center">
+  <strong>Bring agentic CLI tools into Obsidian as a workspace copilot.</strong><br />
+  Claude Code &bull; Opencode &bull; Gemini CLI &bull; Any custom agent
+</p>
 
-**Agentic Copilot** is a thin orchestration layer that connects Obsidian to whatever agentic coding tool you already use. It doesn't reinvent the wheel — it gives the wheel a steering column inside your knowledge base.
+<p align="center">
+  <a href="https://github.com/spencermarx/obsidian-ai/releases/latest"><img src="https://img.shields.io/github/v/release/spencermarx/obsidian-ai?style=flat-square&color=blue" alt="Latest Release" /></a>
+  <a href="https://github.com/spencermarx/obsidian-ai/releases"><img src="https://img.shields.io/github/downloads/spencermarx/obsidian-ai/total?style=flat-square&color=success" alt="Downloads" /></a>
+  <a href="https://github.com/spencermarx/obsidian-ai/stargazers"><img src="https://img.shields.io/github/stars/spencermarx/obsidian-ai?style=flat-square" alt="Stars" /></a>
+  <a href="https://github.com/spencermarx/obsidian-ai/blob/main/LICENSE"><img src="https://img.shields.io/github/license/spencermarx/obsidian-ai?style=flat-square" alt="License" /></a>
+  <img src="https://img.shields.io/badge/obsidian-%3E%3D1.5.0-blueviolet?style=flat-square&logo=obsidian&logoColor=white" alt="Obsidian >= 1.5.0" />
+  <img src="https://img.shields.io/badge/platform-desktop%20only-orange?style=flat-square" alt="Desktop Only" />
+  <a href="https://github.com/spencermarx/obsidian-ai/issues"><img src="https://img.shields.io/github/issues/spencermarx/obsidian-ai?style=flat-square" alt="Issues" /></a>
+  <a href="https://github.com/spencermarx/obsidian-ai/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome" /></a>
+</p>
+
+<br />
+
+> **Agentic Copilot** is a thin orchestration layer that connects Obsidian to whatever agentic coding tool you already use. It doesn't reinvent the wheel — it gives the wheel a steering column inside your knowledge base. Auto-detects your environment. Zero configuration required.
+
+<br />
+
+## Table of Contents
+
+- [Why Agentic Copilot?](#why-agentic-copilot)
+- [Quickstart](#quickstart)
+- [Features](#features)
+- [Supported Agents](#supported-agents)
+- [Commands](#commands)
+- [Configuration](#configuration)
+- [How It Works](#how-it-works)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Why Agentic Copilot?
+
+Most AI plugins ship their own LLM integration, locking you into a specific provider and model. **Agentic Copilot takes a different approach**: it connects to the CLI tools you already have installed — tools that handle auth, model selection, context windows, and tool use on their own.
 
 ```
 You (Obsidian) <-> Agentic Copilot <-> CLI Agent <-> LLM Provider
@@ -17,14 +53,20 @@ You (Obsidian) <-> Agentic Copilot <-> CLI Agent <-> LLM Provider
                    (this plugin)
 ```
 
+**What you get:**
+- Use the same agent, same config, same API keys as your terminal workflow
+- Every improvement to Claude Code / Opencode / Gemini CLI lands in Obsidian automatically
+- Swap agents with a single command — no settings migration, no API key juggling
+- Your data never touches an intermediary — it flows directly from plugin to your local CLI tool
+
 ---
 
 ## Quickstart
 
-**1. Install a CLI agent** (if you don't have one already):
+### 1. Install a CLI agent
 
 ```bash
-# Claude Code
+# Claude Code (recommended)
 npm install -g @anthropic-ai/claude-code
 
 # — or —
@@ -33,15 +75,17 @@ npm install -g @anthropic-ai/claude-code
 curl -fsSL https://opencode.ai/install | bash
 ```
 
-**2. Install the plugin** (pick one method):
+### 2. Install the plugin
 
 | Method | Steps |
 |--------|-------|
-| **Community Plugins** | Settings > Community Plugins > Browse > search "Agentic Copilot" > Install > Enable |
-| **BRAT** (beta/pre-release) | Install [BRAT](https://github.com/TfTHacker/obsidian42-brat) > Add beta plugin > enter `spencermarx/obsidian-ai` |
-| **Manual** | Download `main.js`, `manifest.json`, `styles.css` from the [latest release](https://github.com/spencermarx/obsidian-ai/releases) into `<vault>/.obsidian/plugins/agentic-copilot/` > restart Obsidian > enable |
+| **Community Plugins** | Settings → Community Plugins → Browse → search **"Agentic Copilot"** → Install → Enable |
+| **BRAT** (beta/pre-release) | Install [BRAT](https://github.com/TfTHacker/obsidian42-brat) → Add beta plugin → enter `spencermarx/obsidian-ai` |
+| **Manual** | Download `main.js`, `manifest.json`, `styles.css` from the [latest release](https://github.com/spencermarx/obsidian-ai/releases/latest) into `<vault>/.obsidian/plugins/agentic-copilot/` → restart Obsidian → enable |
 
-**3. Open the chat panel**: Click the bot icon in the ribbon, or `Ctrl/Cmd+P` > "Agentic Copilot: Open chat panel".
+### 3. Open the chat panel
+
+Click the bot icon in the ribbon, or run `Ctrl/Cmd+P` → **"Agentic Copilot: Open chat panel"**.
 
 That's it. The plugin auto-detects your agent and you're ready to go.
 
@@ -49,61 +93,79 @@ That's it. The plugin auto-detects your agent and you're ready to go.
 
 ## Features
 
-### Chat Panel
-A conversational side panel that streams agent responses in real-time, rendered with Obsidian's native markdown engine (so links, code blocks, and themes all just work).
+### 💬 Chat Panel
 
-### Vault-Aware Context
-Every prompt automatically includes your active file, text selection, and vault path — so the agent knows what you're looking at. Fully configurable in settings.
+A conversational side panel that streams agent responses in real-time, rendered with Obsidian's native markdown engine — links, code blocks, and themes all just work.
 
-### Slash Commands
-Type `/` in the chat input to autocomplete agent-native commands. These come directly from the connected CLI tool — `/commit`, `/compact`, `/review-pr`, `/help`, etc.
+### 📎 Vault-Aware Context
 
-### File Edit Diffs
+Every prompt automatically includes your active file, text selection, and vault path so the agent knows what you're looking at. Fully configurable in settings.
+
+### ⚡ Slash Commands
+
+Type `/` in the chat input to autocomplete agent-native commands — `/commit`, `/compact`, `/review-pr`, `/help`, and more. Commands come directly from the connected CLI tool.
+
+### 📝 File Edit Diffs
+
 When the agent suggests file changes, they appear as inline diffs with **Accept** / **Reject** buttons. No changes are applied without your confirmation (unless you enable auto-apply).
 
-### Multi-Session
+### 🪟 Multi-Session
+
 Open multiple independent chat panels, each with its own agent session. Use different agents in different panels, or run parallel conversations with the same one.
 
-### Editor Integration
+### ✏️ Editor Integration
+
 Select text in any file, then:
-- **Right-click > Ask Agent** — send the selection as a prompt
-- **Right-click > Explain Selection** — get an explanation
+
+- **Right-click → Ask Agent** — send the selection as a prompt
+- **Right-click → Explain Selection** — get an explanation
 - **Command palette** — Explain, Refactor, Ask about file, Run slash command
 
-### Multi-Agent Auto-Detection
-On load, the plugin scans your PATH for known CLI tools and presents the first one found. Switch agents anytime via the command palette (`Agentic Copilot: Switch agent`) or in settings.
+### 🔍 Multi-Agent Auto-Detection
 
-| Agent | Binary | Output Mode |
-|-------|--------|-------------|
-| Claude Code | `claude` | `--output-format stream-json` (structured streaming) |
-| Opencode | `opencode` | `run` mode (text/JSON) |
-| Custom | any | stdin/stdout pipes |
+On load, the plugin scans your PATH for known CLI tools and presents the first one found. Switch agents anytime via the command palette or settings.
 
 ---
 
-## All Commands
+## Supported Agents
+
+| Agent | Binary | Output Mode | Status |
+|-------|--------|-------------|--------|
+| **Claude Code** | `claude` | `--output-format stream-json` (structured streaming) | ✅ Full support |
+| **Opencode** | `opencode` | `run` mode (text/JSON) | ✅ Full support |
+| **Custom** | any | stdin/stdout pipes | ✅ Generic adapter |
+| **Gemini CLI** | `gemini` | — | 🚧 Planned |
+
+> **Want to add your agent?** See [Adding a New Agent](#adding-a-new-agent) — it's a single file.
+
+---
+
+## Commands
 
 Open with `Ctrl/Cmd+P` (command palette):
 
 | Command | Description |
 |---------|-------------|
-| `Agentic Copilot: Open chat panel` | Open or focus the chat sidebar |
-| `Agentic Copilot: Open new chat session` | Open an additional chat panel (multi-session) |
-| `Agentic Copilot: Ask agent about current file` | Send the active file to the agent |
-| `Agentic Copilot: Ask agent about selection` | Send selected text to the agent |
-| `Agentic Copilot: Explain selection` | Ask the agent to explain selected text |
-| `Agentic Copilot: Refactor selection` | Ask the agent to refactor selected code |
-| `Agentic Copilot: Run agent slash command` | Fuzzy-search and execute an agent slash command |
-| `Agentic Copilot: Restart agent session` | Kill and restart the current session |
-| `Agentic Copilot: Switch agent` | Switch between detected CLI agents |
+| **Open chat panel** | Open or focus the chat sidebar |
+| **Open new chat session** | Open an additional chat panel (multi-session) |
+| **Ask agent about current file** | Send the active file to the agent |
+| **Ask agent about selection** | Send selected text to the agent |
+| **Explain selection** | Ask the agent to explain selected text |
+| **Refactor selection** | Ask the agent to refactor selected code |
+| **Run agent slash command** | Fuzzy-search and execute an agent slash command |
+| **Restart agent session** | Kill and restart the current session |
+| **Switch agent** | Switch between detected CLI agents |
+
+> All commands are prefixed with `Agentic Copilot:` in the command palette.
 
 ---
 
 ## Configuration
 
-Open **Settings > Agentic Copilot**:
+Open **Settings → Agentic Copilot**:
 
-### Agent
+<details>
+<summary><strong>Agent Settings</strong></summary>
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -111,7 +173,10 @@ Open **Settings > Agentic Copilot**:
 | Custom binary path | Full path or command name for a custom CLI agent | — |
 | Extra CLI arguments | Additional args appended to every invocation (e.g., `--model opus`) | — |
 
-### Context
+</details>
+
+<details>
+<summary><strong>Context Settings</strong></summary>
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -119,54 +184,25 @@ Open **Settings > Agentic Copilot**:
 | Include active file | Auto-include the active file's content in every prompt | On |
 | Include selection | Auto-include the current text selection in every prompt | On |
 
-### Sessions
+</details>
+
+<details>
+<summary><strong>Session Settings</strong></summary>
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Max concurrent sessions | Maximum simultaneous agent sessions | 5 |
 
-### Advanced
+</details>
+
+<details>
+<summary><strong>Advanced Settings</strong></summary>
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Auto-apply file edits | Apply agent-suggested edits without confirmation. **Use with caution.** | Off |
 
----
-
-## Troubleshooting
-
-### "No agentic CLI tools found"
-
-The plugin couldn't find any known CLI binaries on your PATH.
-
-1. **Verify installation**: Open a terminal and run `claude --version` or `opencode version`
-2. **Check PATH**: Obsidian inherits the system PATH. If you installed a tool via a version manager (nvm, fnm, mise), ensure the binary is on the default PATH — not just your shell profile
-3. **Use a custom binary path**: Go to Settings > Agentic Copilot > set Agent to "Custom" and enter the full path (e.g., `/Users/you/.nvm/versions/node/v20/bin/claude`)
-4. **Restart Obsidian**: Detection runs on plugin load. Restart after installing a new CLI tool
-
-### Agent hangs or produces no output
-
-- Click the **Stop** button to kill the process
-- Use `Agentic Copilot: Restart agent session` from the command palette
-- Check that your CLI tool works standalone: `claude -p "hello"` should produce output
-- If using custom args, temporarily clear them in settings to rule out conflicts
-
-### "Process exited with code 1"
-
-The CLI tool crashed. Common causes:
-- **Missing API key**: Most agents need an API key set as an environment variable (e.g., `ANTHROPIC_API_KEY`). Set it in your shell profile so Obsidian inherits it
-- **Rate limiting**: You've exceeded the provider's rate limit. Wait and retry
-- **Network error**: Check your internet connection
-
-### Plugin doesn't load on mobile
-
-This plugin is **desktop only**. It requires Node.js's `child_process` module to spawn CLI tools, which is only available in Obsidian's Electron (desktop) environment.
-
-### Theme doesn't look right
-
-The plugin uses Obsidian's CSS variables for all styling. If something looks off:
-- Try switching themes to confirm it's not a theme-specific issue
-- File an issue with your theme name and a screenshot
+</details>
 
 ---
 
@@ -214,7 +250,9 @@ The plugin uses Obsidian's CSS variables for all styling. If something looks off
 
 ### Why `child_process.spawn` (not node-pty)?
 
-`node-pty` requires native compilation per platform — impractical for an Obsidian plugin that must install without a build step. Instead, we use Node.js `child_process.spawn` with piped stdio, and rely on structured output modes (e.g., Claude Code's `--output-format stream-json`) for rich, parseable data. Trade-off: no full TTY emulation. Benefit: zero native dependencies, instant cross-platform install.
+`node-pty` requires native compilation per platform — impractical for an Obsidian plugin that must install without a build step. Instead, we use Node.js `child_process.spawn` with piped stdio, and rely on structured output modes (e.g., Claude Code's `--output-format stream-json`) for rich, parseable data.
+
+**Trade-off:** no full TTY emulation. **Benefit:** zero native dependencies, instant cross-platform install.
 
 ### Adding a New Agent
 
@@ -252,11 +290,16 @@ const ADAPTER_CONSTRUCTORS: Array<() => AgentAdapter> = [
 ];
 ```
 
-That's it. The detection, settings UI, and chat panel all pick it up automatically.
+That's it. Detection, settings UI, and chat panel all pick it up automatically.
 
 ---
 
 ## Development
+
+### Prerequisites
+
+- Node.js >= 18
+- An Obsidian vault for testing
 
 ### Setup
 
@@ -272,10 +315,10 @@ npm install
 npm run dev
 ```
 
-This watches `src/` and rebuilds `main.js` on every change. Symlink into a test vault:
+Watches `src/` and rebuilds `main.js` on every change. Symlink into a test vault:
 
 ```bash
-# macOS/Linux
+# macOS / Linux
 ln -s "$(pwd)" "/path/to/vault/.obsidian/plugins/agentic-copilot"
 
 # Windows (PowerShell, as admin)
@@ -290,23 +333,19 @@ Then reload Obsidian (`Ctrl/Cmd+R`) to pick up changes.
 npm run build
 ```
 
-Outputs: `main.js` (single bundled file, ~56KB).
-
-### Releasing a New Version
-
-A GitHub Actions workflow handles the entire release process:
+### Releasing
 
 ```bash
-# 1. Bump version in manifest.json and versions.json
+# 1. Bump version
 npm version patch   # 1.0.0 → 1.0.1 (or: minor, major)
 
-# 2. Push the tag — this triggers the release workflow
+# 2. Push the tag — triggers the release workflow
 git push --follow-tags
 ```
 
-The workflow builds the plugin and creates a GitHub Release with `main.js`, `manifest.json`, `styles.css`, and a zip archive attached.
+GitHub Actions builds the plugin and creates a release with `main.js`, `manifest.json`, `styles.css`, and a zip archive.
 
-> **Important**: The release tag must be the bare version number (`1.0.1`), not prefixed with `v`. This is required for both BRAT and the Obsidian community plugin system.
+> **Note:** Release tags must be bare version numbers (`1.0.1`), not prefixed with `v`. This is required by both BRAT and the Obsidian community plugin system.
 
 ### Project Structure
 
@@ -335,34 +374,131 @@ src/
 
 ---
 
+## Troubleshooting
+
+<details>
+<summary><strong>"No agentic CLI tools found"</strong></summary>
+
+The plugin couldn't find any known CLI binaries on your PATH.
+
+1. **Verify installation** — open a terminal and run `claude --version` or `opencode version`
+2. **Check PATH** — Obsidian inherits the system PATH. If you installed via a version manager (nvm, fnm, mise), ensure the binary is on the default PATH
+3. **Use a custom binary path** — Settings → Agentic Copilot → set Agent to "Custom" → enter the full path (e.g., `/Users/you/.nvm/versions/node/v20/bin/claude`)
+4. **Restart Obsidian** — detection runs on plugin load
+
+</details>
+
+<details>
+<summary><strong>Agent hangs or produces no output</strong></summary>
+
+- Click the **Stop** button to kill the process
+- Use `Agentic Copilot: Restart agent session` from the command palette
+- Verify the CLI works standalone: `claude -p "hello"` should produce output
+- Temporarily clear any custom CLI args in settings to rule out conflicts
+
+</details>
+
+<details>
+<summary><strong>"Process exited with code 1"</strong></summary>
+
+The CLI tool crashed. Common causes:
+
+- **Missing API key** — most agents need an env var (e.g., `ANTHROPIC_API_KEY`). Set it in your shell profile so Obsidian inherits it
+- **Rate limiting** — you've exceeded the provider's rate limit. Wait and retry
+- **Network error** — check your internet connection
+
+</details>
+
+<details>
+<summary><strong>Plugin doesn't load on mobile</strong></summary>
+
+This plugin is **desktop only**. It requires Node.js `child_process` to spawn CLI tools, which is only available in Obsidian's Electron environment.
+
+</details>
+
+<details>
+<summary><strong>Theme doesn't look right</strong></summary>
+
+The plugin uses Obsidian's CSS variables for all styling. If something looks off:
+
+- Try switching themes to confirm it's not a theme-specific issue
+- [File an issue](https://github.com/spencermarx/obsidian-ai/issues) with your theme name and a screenshot
+
+</details>
+
+---
+
 ## FAQ
 
-**Q: Does this send my vault data to a third party?**
-A: The plugin itself sends nothing externally. It passes context to your locally-installed CLI agent, which then communicates with its configured LLM provider. Your data flows through the same path it would if you ran the CLI tool directly in a terminal.
+<details>
+<summary><strong>Does this send my vault data to a third party?</strong></summary>
 
-**Q: Can I use this on mobile?**
-A: No. The plugin requires Node.js `child_process` to spawn CLI tools, which is only available on desktop (Electron).
+No. The plugin itself sends nothing externally. It passes context to your locally-installed CLI agent, which then communicates with its configured LLM provider. Your data flows through the same path it would if you ran the CLI tool directly in a terminal.
 
-**Q: What if I have both Claude Code and Opencode installed?**
-A: The plugin auto-detects both. By default it uses the first one found (Claude Code takes priority). You can switch anytime via Settings or the `Switch agent` command.
+</details>
 
-**Q: Can I use my own custom AI tool?**
-A: Yes. Set Agent to "Custom" in settings and enter the binary name or full path. The plugin will pipe your prompt as a CLI argument and read stdout as the response.
+<details>
+<summary><strong>Can I use this on mobile?</strong></summary>
 
-**Q: Does the agent have access to my entire vault?**
-A: The plugin passes the vault path as the working directory, and optionally the active file's content and your text selection. The CLI agent can then read files within that directory as it normally would. This is the same access the agent has when you run it from a terminal in your vault folder.
+No. The plugin requires Node.js `child_process` to spawn CLI tools, which is only available on desktop (Electron).
 
-**Q: How do I update the plugin?**
-A: If installed via Community Plugins or BRAT, updates are automatic. For manual installs, download the latest release files and replace the old ones.
+</details>
+
+<details>
+<summary><strong>What if I have both Claude Code and Opencode installed?</strong></summary>
+
+The plugin auto-detects both. By default it uses the first one found (Claude Code takes priority). You can switch anytime via Settings or the `Switch agent` command.
+
+</details>
+
+<details>
+<summary><strong>Can I use my own custom AI tool?</strong></summary>
+
+Yes. Set Agent to "Custom" in settings and enter the binary name or full path. The plugin will pipe your prompt as a CLI argument and read stdout as the response.
+
+</details>
+
+<details>
+<summary><strong>Does the agent have access to my entire vault?</strong></summary>
+
+The plugin passes the vault path as the working directory, and optionally the active file's content and your text selection. The CLI agent can then read files within that directory as it normally would — same access as running it from a terminal in your vault folder.
+
+</details>
+
+<details>
+<summary><strong>How do I update the plugin?</strong></summary>
+
+If installed via Community Plugins or BRAT, updates are automatic. For manual installs, download the latest release files and replace the old ones.
+
+</details>
 
 ---
 
 ## Contributing
 
-Contributions are welcome! The most impactful way to contribute is **adding a new adapter** for a CLI tool you use. See [Adding a New Agent](#adding-a-new-agent) above.
+Contributions are welcome! Here's how to get involved:
 
-For bug reports and feature requests, please [open an issue](https://github.com/spencermarx/obsidian-ai/issues).
+- **Add a new agent adapter** — the most impactful contribution. See [Adding a New Agent](#adding-a-new-agent)
+- **Report bugs** — [open an issue](https://github.com/spencermarx/obsidian-ai/issues) with reproduction steps
+- **Request features** — [open an issue](https://github.com/spencermarx/obsidian-ai/issues) describing your use case
+- **Submit a PR** — fork, branch, and open a pull request. All PRs are welcome
+
+Please read the [Code of Conduct](https://github.com/spencermarx/obsidian-ai/blob/main/CODE_OF_CONDUCT.md) before contributing.
+
+---
+
+## Acknowledgements
+
+Built with the [Obsidian Plugin API](https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin). Inspired by the growing ecosystem of agentic coding tools and the Obsidian community's relentless drive to connect everything.
+
+---
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — use it, fork it, ship it.
+
+---
+
+<p align="center">
+  <sub>If Agentic Copilot is useful to you, consider giving it a <a href="https://github.com/spencermarx/obsidian-ai">star on GitHub</a> — it helps others discover the project.</sub>
+</p>
