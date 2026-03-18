@@ -21,7 +21,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h1", { text: "Agentic Copilot" });
+		new Setting(containerEl).setName("Agentic copilot").setHeading();
 
 		// Agent selection
 		const agentOptions: Record<string, string> = {
@@ -99,7 +99,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 			);
 
 		// Working directory
-		containerEl.createEl("h2", { text: "Context" });
+		new Setting(containerEl).setName("Context").setHeading();
 
 		new Setting(containerEl)
 			.setName("Working directory")
@@ -148,7 +148,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 			);
 
 		// Sessions
-		containerEl.createEl("h2", { text: "Sessions" });
+		new Setting(containerEl).setName("Sessions").setHeading();
 
 		new Setting(containerEl)
 			.setName("Max concurrent sessions")
@@ -167,7 +167,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 			);
 
 		// Permissions
-		containerEl.createEl("h2", { text: "Permissions" });
+		new Setting(containerEl).setName("Permissions").setHeading();
 
 		new Setting(containerEl)
 			.setName("Edit approval")
@@ -188,7 +188,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 			);
 
 		// Status section
-		containerEl.createEl("h2", { text: "Detected Agents" });
+		new Setting(containerEl).setName("Detected agents").setHeading();
 
 		if (this.detectedAgents.length === 0) {
 			containerEl.createEl("p", {
