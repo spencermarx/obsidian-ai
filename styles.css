@@ -10,6 +10,9 @@
    Transition: 150ms ease for interactions, 200ms for focus.
    ============================================================ */
 
+/* ---- Utility ---- */
+.ac-hidden { display: none !important; }
+
 /* ---- Reset ---- */
 .ac-chat-container,
 .ac-chat-container *,
@@ -795,6 +798,7 @@
 	min-width: 0;
 	min-height: 34px;
 	max-height: 200px;
+	height: var(--ac-input-height, auto);
 	padding: 6px 0;
 	border: none;
 	background: transparent;

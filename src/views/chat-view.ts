@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, TFile, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, setIcon } from "obsidian";
 import { CHAT_VIEW_TYPE } from "../constants";
 import { AgentAdapter, AgentMessage, SlashCommand } from "../adapters/types";
 import { SessionManager, SessionStatus } from "../session/session-manager";
@@ -142,7 +142,7 @@ export class ChatView extends ItemView {
 				tabindex: "0",
 			},
 		});
-		this.sessionChip.style.display = "none"; // hidden until real CLI ID arrives
+		this.sessionChip.addClass("ac-hidden"); // hidden until real CLI ID arrives
 		const chipTermIcon = this.sessionChip.createSpan({
 			cls: "ac-session-chip-terminal",
 		});
@@ -164,9 +164,9 @@ export class ChatView extends ItemView {
 
 		// ── Autocomplete popups (hidden by default) ──
 		this.slashPopup = container.createDiv({ cls: "ac-slash-popup" });
-		this.slashPopup.style.display = "none";
+		this.slashPopup.addClass("ac-hidden");
 		this.mentionPopup = container.createDiv({ cls: "ac-mention-popup" });
-		this.mentionPopup.style.display = "none";
+		this.mentionPopup.addClass("ac-hidden");
 
 		// ── Input area ──
 		const inputArea = container.createDiv({ cls: "ac-input-area" });
@@ -192,7 +192,7 @@ export class ChatView extends ItemView {
 			attr: { "aria-label": "Stop" },
 		});
 		setIcon(this.stopBtn, "square");
-		this.stopBtn.style.display = "none";
+		this.stopBtn.addClass("ac-hidden");
 
 		// ── Toolbar below input ──
 		const toolbar = inputArea.createDiv({ cls: "ac-toolbar" });
@@ -211,7 +211,7 @@ export class ChatView extends ItemView {
 		if (this.settings.editApprovalMode === "auto-accept") {
 			this.permToggle.addClass("ac-toolbar-toggle-auto");
 		}
-		this.permToggle.addEventListener("click", async () => {
+		this.permToggle.addEventListener("click", () => {
 			const newMode =
 				this.settings.editApprovalMode === "approve"
 					? "auto-accept"
@@ -223,7 +223,7 @@ export class ChatView extends ItemView {
 				"ac-toolbar-toggle-auto",
 				newMode === "auto-accept"
 			);
-			await this.onSaveSettings();
+			void this.onSaveSettings();
 			new Notice(
 				newMode === "auto-accept"
 					? "Edits will be applied silently"
@@ -244,7 +244,7 @@ export class ChatView extends ItemView {
 		});
 
 		const header = welcome.createDiv({ cls: "ac-welcome-header" });
-		header.createEl("h3", { text: "Agentic Copilot" });
+		header.createEl("h3", { text: "Agentic copilot" });
 		header.createEl("p", {
 			text: `Connected to ${this.adapter.displayName}. Ask anything about your vault.`,
 		});
@@ -363,7 +363,7 @@ export class ChatView extends ItemView {
 		const session = this.sessionManager.getSession(this.sessionId);
 		if (!session) return;
 		const cmd = `claude --resume ${session.cliSessionId}`;
-		navigator.clipboard.writeText(cmd).then(() => {
+		void navigator.clipboard.writeText(cmd).then(() => {
 			// Show checkmark feedback
 			this.sessionChipIcon.empty();
 			setIcon(this.sessionChipIcon, "check");
@@ -382,7 +382,7 @@ export class ChatView extends ItemView {
 		if (this.sessionChip) {
 			const shortId = cliSessionId.slice(0, 8);
 			this.sessionChipId.textContent = shortId;
-			this.sessionChip.style.display = "";
+			this.sessionChip.removeClass("ac-hidden");
 			this.sessionChip.setAttribute(
 				"aria-label",
 				`Session ${cliSessionId} — click to copy resume command`
@@ -418,7 +418,7 @@ export class ChatView extends ItemView {
 		});
 
 		// Send button
-		this.sendBtn.addEventListener("click", () => this.sendMessage());
+		this.sendBtn.addEventListener("click", () => { void this.sendMessage(); });
 
 		// Stop button
 		this.stopBtn.addEventListener("click", () => this.stopGeneration());
@@ -458,7 +458,7 @@ export class ChatView extends ItemView {
 
 			if (e.key === "Enter" && !e.shiftKey) {
 				e.preventDefault();
-				this.sendMessage();
+				void this.sendMessage();
 			}
 		});
 
@@ -480,16 +480,15 @@ export class ChatView extends ItemView {
 
 	private isPopupVisible(): boolean {
 		return (
-			this.slashPopup.style.display !== "none" ||
-			this.mentionPopup.style.display !== "none"
+			!this.slashPopup.hasClass("ac-hidden") ||
+			!this.mentionPopup.hasClass("ac-hidden")
 		);
 	}
 
 	private navigatePopup(direction: number): void {
-		const popup =
-			this.slashPopup.style.display !== "none"
-				? this.slashPopup
-				: this.mentionPopup;
+		const popup = !this.slashPopup.hasClass("ac-hidden")
+			? this.slashPopup
+			: this.mentionPopup;
 		const items = Array.from(popup.querySelectorAll(".ac-popup-item"));
 		if (items.length === 0) return;
 
@@ -542,8 +541,8 @@ export class ChatView extends ItemView {
 		}
 
 		this.isGenerating = true;
-		this.sendBtn.style.display = "none";
-		this.stopBtn.style.display = "";
+		this.sendBtn.addClass("ac-hidden");
+		this.stopBtn.removeClass("ac-hidden");
 		this.streamingThinkingEl = null;
 		this.streamingMessageEl = null;
 
@@ -587,7 +586,7 @@ export class ChatView extends ItemView {
 	private handleMessage(message: AgentMessage): void {
 		this.handleMsgCount++;
 		if (this.handleMsgCount <= 10 || this.handleMsgCount % 20 === 0) {
-			console.log(
+			console.debug(
 				`[agentic-copilot][PIPE-8] ChatView.handleMessage #${this.handleMsgCount}: role=${message.role} thinking=${!!message.isThinking} tool=${!!message.toolUse} len=${message.content.length}`
 			);
 		}
@@ -669,7 +668,7 @@ export class ChatView extends ItemView {
 				);
 			if (contentEl) {
 				contentEl.empty();
-				this.renderer.renderMarkdownInto(message.content, contentEl);
+				void this.renderer.renderMarkdownInto(message.content, contentEl);
 			}
 			this.scrollToBottom();
 			return;
@@ -692,7 +691,7 @@ export class ChatView extends ItemView {
 				this.streamingMessageEl.createDiv({ cls: "ac-message-body" });
 			}
 
-			this.renderer.renderStreamingText(
+			void this.renderer.renderStreamingText(
 				message.content,
 				this.streamingMessageEl
 			);
@@ -755,8 +754,8 @@ export class ChatView extends ItemView {
 			this.streamingThinkingEl = null;
 		}
 		this.streamingMessageEl = null;
-		this.sendBtn.style.display = "";
-		this.stopBtn.style.display = "none";
+		this.sendBtn.removeClass("ac-hidden");
+		this.stopBtn.addClass("ac-hidden");
 	}
 
 	private stopGeneration(): void {
@@ -797,8 +796,8 @@ export class ChatView extends ItemView {
 
 	private autoResizeInput(): void {
 		this.inputEl.style.height = "auto";
-		this.inputEl.style.height =
-			Math.min(this.inputEl.scrollHeight, 200) + "px";
+		const h = Math.min(this.inputEl.scrollHeight, 200) + "px";
+		this.inputEl.setCssProps({ "--ac-input-height": h });
 	}
 
 	private updateSendButtonState(): void {
@@ -855,12 +854,12 @@ export class ChatView extends ItemView {
 			.slice(0, 8);
 
 		if (matches.length === 0) {
-			this.mentionPopup.style.display = "none";
+			this.mentionPopup.addClass("ac-hidden");
 			return;
 		}
 
 		this.mentionPopup.empty();
-		this.mentionPopup.style.display = "";
+		this.mentionPopup.removeClass("ac-hidden");
 
 		for (const file of matches) {
 			const item = this.mentionPopup.createDiv({
@@ -914,12 +913,12 @@ export class ChatView extends ItemView {
 			.slice(0, 8);
 
 		if (matches.length === 0) {
-			this.mentionPopup.style.display = "none";
+			this.mentionPopup.addClass("ac-hidden");
 			return;
 		}
 
 		this.mentionPopup.empty();
-		this.mentionPopup.style.display = "";
+		this.mentionPopup.removeClass("ac-hidden");
 
 		for (const tag of matches) {
 			const item = this.mentionPopup.createDiv({
@@ -965,7 +964,7 @@ export class ChatView extends ItemView {
 	private showSlashPopup(commands: SlashCommand[]): void {
 		this.hideAllPopups();
 		this.slashPopup.empty();
-		this.slashPopup.style.display = "";
+		this.slashPopup.removeClass("ac-hidden");
 
 		for (const cmd of commands) {
 			const item = this.slashPopup.createDiv({
@@ -988,8 +987,8 @@ export class ChatView extends ItemView {
 	}
 
 	private hideAllPopups(): void {
-		this.slashPopup.style.display = "none";
-		this.mentionPopup.style.display = "none";
+		this.slashPopup.addClass("ac-hidden");
+		this.mentionPopup.addClass("ac-hidden");
 	}
 
 	private async handleRevertEdit(button: HTMLElement): Promise<void> {
