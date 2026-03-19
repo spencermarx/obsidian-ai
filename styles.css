@@ -407,6 +407,66 @@
 	margin: 0;
 }
 
+/* -- Copy Button (shared by user & assistant messages) -- */
+.ac-message {
+	position: relative;
+}
+
+.ac-copy-btn {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 6px;
+	color: var(--text-faint);
+	opacity: 0;
+	transition: opacity 0.15s ease, background 0.15s ease;
+	cursor: pointer;
+	z-index: 1;
+}
+
+.ac-message:hover .ac-copy-btn {
+	opacity: 1;
+}
+
+.ac-copy-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-muted);
+}
+
+/* On accent-colored user bubbles, use white tones */
+.ac-message-user .ac-copy-btn {
+	color: var(--text-on-accent);
+	opacity: 0;
+}
+
+.ac-message-user:hover .ac-copy-btn {
+	opacity: 0.6;
+}
+
+.ac-message-user .ac-copy-btn:hover {
+	background: rgba(255, 255, 255, 0.15);
+	opacity: 1;
+}
+
+.ac-copy-btn svg {
+	width: 13px;
+	height: 13px;
+}
+
+.ac-copy-btn-done {
+	opacity: 1 !important;
+	color: var(--text-success, #10b981);
+}
+
+.ac-message-user .ac-copy-btn-done {
+	color: var(--text-on-accent);
+}
+
 /* -- Assistant Message -- */
 .ac-message-assistant {
 	background: transparent;

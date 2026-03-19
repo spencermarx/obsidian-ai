@@ -705,6 +705,7 @@ export class ChatView extends ItemView {
 		});
 		const body = el.createDiv({ cls: "ac-message-body" });
 		body.createEl("p", { text: message.content });
+		this.addCopyButton(el, message.content);
 		this.scrollToBottom();
 	}
 
@@ -753,6 +754,18 @@ export class ChatView extends ItemView {
 			if (details) details.removeAttribute("open");
 			this.streamingThinkingEl = null;
 		}
+		// Add copy button to the completed assistant message
+		if (this.streamingMessageEl) {
+			const body = this.streamingMessageEl.querySelector<HTMLElement>(
+				".ac-message-body"
+			);
+			if (body) {
+				this.addCopyButton(
+					this.streamingMessageEl,
+					body.textContent || ""
+				);
+			}
+		}
 		this.streamingMessageEl = null;
 		this.sendBtn.removeClass("ac-hidden");
 		this.stopBtn.addClass("ac-hidden");
@@ -792,6 +805,27 @@ export class ChatView extends ItemView {
 	private scrollToBottom(): void {
 		this.messagesContainer.scrollTop =
 			this.messagesContainer.scrollHeight;
+	}
+
+	private addCopyButton(messageEl: HTMLElement, text: string): void {
+		const btn = messageEl.createDiv({
+			cls: "ac-copy-btn clickable-icon",
+			attr: { "aria-label": "Copy" },
+		});
+		setIcon(btn, "copy");
+		btn.addEventListener("click", (e) => {
+			e.stopPropagation();
+			void navigator.clipboard.writeText(text).then(() => {
+				btn.empty();
+				setIcon(btn, "check");
+				btn.addClass("ac-copy-btn-done");
+				setTimeout(() => {
+					btn.empty();
+					setIcon(btn, "copy");
+					btn.removeClass("ac-copy-btn-done");
+				}, 1500);
+			});
+		});
 	}
 
 	private autoResizeInput(): void {
