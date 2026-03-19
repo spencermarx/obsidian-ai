@@ -407,6 +407,12 @@
 	margin: 0;
 }
 
+/* Fix invisible text selection on accent-colored user bubbles */
+.ac-message-user ::selection {
+	background: rgba(255, 255, 255, 0.35);
+	color: inherit;
+}
+
 /* -- Copy Button (shared by user & assistant messages) -- */
 .ac-message {
 	position: relative;
