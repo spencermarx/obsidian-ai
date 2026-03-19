@@ -95,7 +95,7 @@ export class OnboardingView extends ItemView {
 
 		// Claude Code
 		const claude = tools.createDiv({ cls: "ac-install-item" });
-		claude.createEl("h3", { text: "Claude Code" });
+		claude.createEl("h3", { text: "Claude code" });
 		claude.createEl("p", {
 			text: "Anthropic's agentic coding tool.",
 		});
