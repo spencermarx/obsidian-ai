@@ -99,8 +99,8 @@ export class OnboardingView extends ItemView {
 		claude.createEl("p", {
 			text: "Anthropic's agentic coding tool.",
 		});
-		const claudeCode = claude.createEl("pre");
-		claudeCode.createEl("code", {
+		const claudeCmd = claude.createEl("pre");
+		claudeCmd.createEl("code", {
 			text: "npm install -g @anthropic-ai/claude-code",
 		});
 

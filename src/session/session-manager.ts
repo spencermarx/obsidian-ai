@@ -282,7 +282,7 @@ export class SessionManager {
 	stopSession(sessionId: string): void {
 		const session = this.sessions.get(sessionId);
 		if (session) {
-			this.killProcess(session);
+			void this.killProcess(session);
 			this.setStatus(session, "idle");
 		}
 	}
@@ -292,7 +292,7 @@ export class SessionManager {
 		const session = this.sessions.get(sessionId);
 		if (!session) return;
 
-		this.killProcess(session);
+		void this.killProcess(session);
 		if (session.killTimer) {
 			clearTimeout(session.killTimer);
 			session.killTimer = undefined;

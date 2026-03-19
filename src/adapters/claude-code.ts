@@ -142,10 +142,11 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
 				// [PIPE-3] Log the event type
 				const evtType = (event.type as string) || "unknown";
-				const innerType =
-					evtType === "stream_event"
-						? String((event.event as Record<string, unknown>)?.type ?? "?")
-						: "";
+				let innerType = "";
+				if (evtType === "stream_event") {
+					const innerEvt = event.event as Record<string, unknown> | undefined;
+					innerType = typeof innerEvt?.type === "string" ? innerEvt.type : "?";
+				}
 				if (lineCount <= 10 || lineCount % 20 === 0) {
 					console.debug(
 						`[agentic-copilot][PIPE-3] JSON line #${lineCount}: type=${evtType}${innerType ? ` inner=${innerType}` : ""}`

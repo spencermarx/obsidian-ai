@@ -21,8 +21,6 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl).setName("General").setHeading();
-
 		// Agent selection
 		const agentOptions: Record<string, string> = {
 			auto: "Auto-detect (first available)",
@@ -47,7 +45,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Agent")
 			.setDesc(
-				"Which agentic CLI tool to use. 'Auto-detect' picks the first one found on your system."
+				"Which agentic CLI tool to use. 'auto-detect' picks the first one found on your system."
 			)
 			.addDropdown((dropdown) =>
 				dropdown
@@ -172,7 +170,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Edit approval")
 			.setDesc(
-				"Control how file edits are reviewed. 'Review edits' shows Keep/Revert buttons after the agent writes; 'Auto-accept' hides review controls."
+				"Control how file edits are reviewed. 'review edits' shows keep/revert buttons after the agent writes; 'auto-accept' hides review controls."
 			)
 			.addDropdown((dropdown) =>
 				dropdown
@@ -192,7 +190,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 
 		if (this.detectedAgents.length === 0) {
 			containerEl.createEl("p", {
-				text: "No agentic CLI tools were detected on your system. Install Claude Code, Opencode, or configure a custom binary above.",
+				text: "No agentic CLI tools were detected on your system. Install one of the supported agents or configure a custom binary above.",
 				cls: "setting-item-description",
 			});
 		} else {
