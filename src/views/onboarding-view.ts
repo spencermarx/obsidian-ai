@@ -25,14 +25,14 @@ export class OnboardingView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Agentic copilot — Setup";
+		return "Setup";
 	}
 
 	getIcon(): string {
 		return "bot";
 	}
 
-	async onOpen(): Promise<void> {
+	onOpen(): Promise<void> {
 		const container = this.containerEl.children[1] as HTMLElement;
 		container.empty();
 		container.addClass("ac-onboarding");
@@ -42,10 +42,12 @@ export class OnboardingView extends ItemView {
 		} else {
 			this.renderNoAgents(container);
 		}
+		return Promise.resolve();
 	}
 
-	async onClose(): Promise<void> {
+	onClose(): Promise<void> {
 		// No cleanup needed
+		return Promise.resolve();
 	}
 
 	private renderAgentSelection(container: HTMLElement): void {
@@ -120,7 +122,7 @@ export class OnboardingView extends ItemView {
 
 		// Manual path option
 		container.createEl("p", {
-			text: 'You can also configure a custom binary path in Settings → Agentic copilot.',
+			text: 'You can also configure a custom binary path in the plugin settings.',
 		});
 	}
 }

@@ -21,7 +21,7 @@ export class AgenticCopilotSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl).setName("Agentic copilot").setHeading();
+		new Setting(containerEl).setName("General").setHeading();
 
 		// Agent selection
 		const agentOptions: Record<string, string> = {

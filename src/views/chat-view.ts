@@ -91,7 +91,7 @@ export class ChatView extends ItemView {
 		return "bot";
 	}
 
-	async onOpen(): Promise<void> {
+	onOpen(): Promise<void> {
 		const container = this.containerEl.children[1] as HTMLElement;
 		container.empty();
 		container.addClass("ac-chat-container");
@@ -99,12 +99,14 @@ export class ChatView extends ItemView {
 		this.buildUI(container);
 		this.setupSession();
 		this.setupEventListeners();
+		return Promise.resolve();
 	}
 
-	async onClose(): Promise<void> {
+	onClose(): Promise<void> {
 		if (this.sessionId) {
 			this.sessionManager.destroySession(this.sessionId);
 		}
+		return Promise.resolve();
 	}
 
 	/** Update the adapter (when user switches agents). */
@@ -473,7 +475,7 @@ export class ChatView extends ItemView {
 		this.messagesContainer.addEventListener("click", (e) => {
 			const target = e.target as HTMLElement;
 			if (target.classList.contains("ac-btn-reject")) {
-				this.handleRevertEdit(target);
+				void this.handleRevertEdit(target);
 			}
 		});
 	}
@@ -829,8 +831,11 @@ export class ChatView extends ItemView {
 	}
 
 	private autoResizeInput(): void {
-		this.inputEl.style.height = "auto";
-		const h = Math.min(this.inputEl.scrollHeight, 200) + "px";
+		// Reset to auto so scrollHeight reflects the actual content size
+		this.inputEl.setCssProps({ "--ac-input-height": "auto" });
+		// Force a layout reflow so scrollHeight updates
+		const scrollH = this.inputEl.scrollHeight;
+		const h = Math.min(scrollH, 200) + "px";
 		this.inputEl.setCssProps({ "--ac-input-height": h });
 	}
 
