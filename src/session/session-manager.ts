@@ -115,8 +115,9 @@ export class SessionManager {
 		const session = this.sessions.get(sessionId);
 		if (!session) throw new Error(`Session ${sessionId} not found`);
 
-		// Kill any existing process for this session
-		this.killProcess(session);
+		// Kill any existing process for this session and wait for it to exit,
+		// so the CLI releases its session lock before we spawn a new process.
+		await this.killProcess(session);
 
 		// Record user message
 		const userMessage: AgentMessage = {
@@ -363,14 +364,14 @@ export class SessionManager {
 	 * actual agent running. We kill the entire process group (negative PID)
 	 * so all descendants are terminated.
 	 */
-	private killProcess(session: Session): void {
+	private killProcess(session: Session): Promise<void> {
 		// Clear any pending force-kill timer from a previous kill attempt
 		if (session.killTimer) {
 			clearTimeout(session.killTimer);
 			session.killTimer = undefined;
 		}
 
-		if (!session.process) return;
+		if (!session.process) return Promise.resolve();
 
 		const proc = session.process;
 		const pid = proc.pid;
@@ -386,7 +387,7 @@ export class SessionManager {
 			}
 		} catch {
 			// Already dead
-			return;
+			return Promise.resolve();
 		}
 
 		// Force kill after 3 seconds if still running
@@ -403,12 +404,15 @@ export class SessionManager {
 			}
 		}, 3000);
 
-		// Clear the timer if the process exits on its own
-		proc.once("close", () => {
-			if (session.killTimer) {
-				clearTimeout(session.killTimer);
-				session.killTimer = undefined;
-			}
+		// Return a promise that resolves when the process actually exits
+		return new Promise<void>((resolve) => {
+			proc.once("close", () => {
+				if (session.killTimer) {
+					clearTimeout(session.killTimer);
+					session.killTimer = undefined;
+				}
+				resolve();
+			});
 		});
 	}
 
