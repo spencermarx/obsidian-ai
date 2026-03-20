@@ -1,6 +1,6 @@
 {
 	"name": "agentic-copilot",
-	"version": "1.0.7",
+	"version": "1.0.8",
 	"description": "Integrate agentic CLI tools (Claude Code, Opencode, Gemini CLI) as a workspace copilot with streaming chat, vault-aware context, and edit diffs.",
 	"main": "main.js",
 	"scripts": {
@@ -21,8 +21,12 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^20.11.0",
+		"@typescript-eslint/eslint-plugin": "^8.57.1",
+		"@typescript-eslint/parser": "^8.57.1",
 		"builtin-modules": "^3.3.0",
 		"esbuild": "0.20.0",
+		"eslint": "^9.39.4",
+		"eslint-plugin-obsidianmd": "^0.1.9",
 		"obsidian": "latest",
 		"tslib": "2.6.2",
 		"typescript": "5.3.3"
