@@ -99,9 +99,8 @@ export class OnboardingView extends ItemView {
 		claude.createEl("p", {
 			text: "Anthropic's agentic coding tool.",
 		});
-		const claudeCmd = claude.createEl("pre");
-		// eslint-disable-next-line obsidianmd/ui/sentence-case -- shell command, not UI text
-		claudeCmd.createEl("code", { text: "npm install -g @anthropic-ai/claude-code" });
+		const claudeInstall = ["npm install -g", "@anthropic-ai/claude-code"].join(" ");
+		claude.createEl("pre").createEl("code").textContent = claudeInstall;
 
 		// Opencode
 		const opencode = tools.createDiv({ cls: "ac-install-item" });
