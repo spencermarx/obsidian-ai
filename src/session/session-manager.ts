@@ -22,6 +22,8 @@ export interface Session {
 	killTimer?: ReturnType<typeof setTimeout>;
 	/** CLI-level session UUID for conversation persistence and resumption. */
 	cliSessionId: string;
+	/** True after the first prompt has been sent and the CLI has initialized the session. */
+	sessionInitialized: boolean;
 }
 
 type SessionEventType = "message" | "status" | "error" | "complete";
@@ -74,6 +76,7 @@ export class SessionManager {
 			messageQueue: new MessageQueue(),
 			userMessages: [],
 			cliSessionId: resumeCliSessionId || crypto.randomUUID(),
+			sessionInitialized: !!resumeCliSessionId,
 		};
 
 		session.messageQueue.onMessage((msg) => {
@@ -132,13 +135,14 @@ export class SessionManager {
 			message: userMessage,
 		});
 
-		// Build spawn args
+		// Build spawn args — use --resume for subsequent prompts
 		const spawnArgs = session.adapter.buildSpawnArgs({
 			prompt,
 			context,
 			cwd: context.vaultPath,
 			editApprovalMode: opts?.editApprovalMode,
 			cliSessionId: session.cliSessionId,
+			resumeSession: session.sessionInitialized,
 		});
 
 		// Resolve the full binary path before spawning.
@@ -183,6 +187,7 @@ export class SessionManager {
 			}
 
 			session.process = proc;
+			session.sessionInitialized = true;
 
 			// Close stdin immediately so the CLI doesn't wait for input.
 			// With -p (prompt) mode the prompt is in args, not stdin.

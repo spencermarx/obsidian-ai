@@ -51,6 +51,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		cwd: string;
 		editApprovalMode?: "approve" | "auto-accept";
 		cliSessionId?: string;
+		resumeSession?: boolean;
 	}): SpawnArgs {
 		const contextStr = formatContextForPrompt(opts.context, {
 			includeFile: true,
@@ -77,9 +78,15 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			allowedTools,
 		];
 
-		// Session persistence for multi-turn and CLI resumption
+		// Session persistence for multi-turn conversations.
+		// First invocation: --session-id creates the session.
+		// Subsequent invocations: --resume continues the existing session.
 		if (opts.cliSessionId) {
-			args.push("--session-id", opts.cliSessionId);
+			if (opts.resumeSession) {
+				args.push("--resume", opts.cliSessionId);
+			} else {
+				args.push("--session-id", opts.cliSessionId);
+			}
 		}
 
 		args.push("-p", fullPrompt);

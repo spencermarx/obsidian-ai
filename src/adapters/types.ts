@@ -70,6 +70,8 @@ export interface AgentAdapter {
 		cwd: string;
 		editApprovalMode?: "approve" | "auto-accept";
 		cliSessionId?: string;
+		/** True when resuming a session that was already initialized by a prior invocation. */
+		resumeSession?: boolean;
 	}): SpawnArgs;
 
 	/**
