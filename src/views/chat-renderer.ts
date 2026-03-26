@@ -10,6 +10,8 @@ export class ChatRenderer {
 	private component: Component;
 	private sourcePath: string;
 	private settings: AgenticCopilotSettings;
+	/** Per-container generation counters to discard stale async renders. */
+	private renderGenerations = new WeakMap<HTMLElement, number>();
 
 	constructor(
 		component: Component,
@@ -56,19 +58,36 @@ export class ChatRenderer {
 		}
 	}
 
+	/** Bump and return the generation for a given target element. */
+	private nextGeneration(target: HTMLElement): number {
+		const gen = (this.renderGenerations.get(target) ?? 0) + 1;
+		this.renderGenerations.set(target, gen);
+		return gen;
+	}
+
 	/**
 	 * Render markdown content directly into an arbitrary container.
-	 * Unlike renderStreamingText, this does not look for .ac-message-body.
+	 * Uses a per-container generation counter to prevent duplicate
+	 * content from concurrent async renders.
 	 */
 	async renderMarkdownInto(
 		content: string,
 		container: HTMLElement
 	): Promise<void> {
-		await this.renderMarkdown(content, container);
+		const gen = this.nextGeneration(container);
+		const tmp = createDiv();
+		await this.renderMarkdown(content, tmp);
+		if (gen === this.renderGenerations.get(container)) {
+			container.empty();
+			container.append(...Array.from(tmp.childNodes));
+		}
 	}
 
 	/**
 	 * Render streaming assistant text — updates in place.
+	 * Uses a per-container generation counter so that stale renders
+	 * (superseded while the async markdown render was in flight) are
+	 * discarded instead of appending duplicate content.
 	 */
 	async renderStreamingText(
 		content: string,
@@ -77,8 +96,13 @@ export class ChatRenderer {
 		const body =
 			container.querySelector<HTMLElement>(".ac-message-body") ||
 			container.createDiv({ cls: "ac-message-body" });
-		body.empty();
-		await this.renderMarkdown(content, body);
+		const gen = this.nextGeneration(body);
+		const tmp = createDiv();
+		await this.renderMarkdown(content, tmp);
+		if (gen === this.renderGenerations.get(body)) {
+			body.empty();
+			body.append(...Array.from(tmp.childNodes));
+		}
 	}
 
 	/**

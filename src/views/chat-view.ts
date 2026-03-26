@@ -669,7 +669,6 @@ export class ChatView extends ItemView {
 					".ac-thinking-content"
 				);
 			if (contentEl) {
-				contentEl.empty();
 				void this.renderer.renderMarkdownInto(message.content, contentEl);
 			}
 			this.scrollToBottom();
