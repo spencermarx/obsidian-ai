@@ -113,7 +113,10 @@ export class SessionManager {
 		sessionId: string,
 		prompt: string,
 		context: VaultContext,
-		opts?: { editApprovalMode?: "approve" | "auto-accept" }
+		opts?: {
+			editApprovalMode?: "approve" | "auto-accept";
+			imagePaths?: string[];
+		}
 	): Promise<void> {
 		const session = this.sessions.get(sessionId);
 		if (!session) throw new Error(`Session ${sessionId} not found`);
@@ -126,6 +129,7 @@ export class SessionManager {
 		const userMessage: AgentMessage = {
 			role: "user",
 			content: prompt,
+			imagePaths: opts?.imagePaths,
 			timestamp: Date.now(),
 		};
 		session.userMessages.push(userMessage);
@@ -143,6 +147,7 @@ export class SessionManager {
 			editApprovalMode: opts?.editApprovalMode,
 			cliSessionId: session.cliSessionId,
 			resumeSession: session.sessionInitialized,
+			imagePaths: opts?.imagePaths,
 		});
 
 		// Resolve the full binary path before spawning.

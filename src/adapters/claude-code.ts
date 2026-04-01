@@ -52,6 +52,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		editApprovalMode?: "approve" | "auto-accept";
 		cliSessionId?: string;
 		resumeSession?: boolean;
+		imagePaths?: string[];
 	}): SpawnArgs {
 		const contextStr = formatContextForPrompt(opts.context, {
 			includeFile: true,
@@ -90,6 +91,12 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		}
 
 		args.push("-p", fullPrompt);
+
+		// Append image file paths as positional args after the prompt.
+		// Claude Code CLI accepts image paths as trailing arguments in -p mode.
+		if (opts.imagePaths?.length) {
+			args.push(...opts.imagePaths);
+		}
 
 		return {
 			command: this.binaryName,

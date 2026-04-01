@@ -21,6 +21,8 @@ export interface AgentMessage {
 	};
 	/** CLI session ID — set on system init events from stream-json. */
 	cliSessionId?: string;
+	/** Absolute paths to images attached to a user message. */
+	imagePaths?: string[];
 	timestamp: number;
 }
 
@@ -72,6 +74,8 @@ export interface AgentAdapter {
 		cliSessionId?: string;
 		/** True when resuming a session that was already initialized by a prior invocation. */
 		resumeSession?: boolean;
+		/** Absolute paths to image files to include with the prompt. */
+		imagePaths?: string[];
 	}): SpawnArgs;
 
 	/**
