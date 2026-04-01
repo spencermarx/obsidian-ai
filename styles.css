@@ -191,9 +191,8 @@
 
 /* ---- Welcome Screen ---- */
 
-/* The welcome screen must fill all available space inside .ac-messages
-   so that justify-content: center actually works. We use min-height: 100%
-   instead of flex:1 to avoid stacking issues when messages exist. */
+/* When the welcome screen is shown, remove messages padding so .ac-welcome
+   can stretch via flex:1 and justify-content:center vertically centres it. */
 .ac-messages:has(.ac-welcome) {
 	padding: 0;
 }
@@ -202,19 +201,17 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	justify-content: center;
 	color: var(--text-muted);
 	min-width: 0;
-	min-height: 100%;
+	flex: 1 0 0%;
 	overflow: hidden;
 }
 
 .ac-welcome-header {
 	flex-shrink: 0;
 	text-align: center;
-	padding: 0 24px;
-	/* Push header toward vertical center when command list is short */
-	margin-top: auto;
-	padding-top: 24px;
+	padding: 24px 24px 0;
 }
 
 .ac-welcome-header h3 {
@@ -237,14 +234,14 @@
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	width: 100%;
 	max-width: 320px;
 	text-align: left;
 	padding: 0 16px;
 }
 
-.ac-chat-container .ac-welcome-commands-label {
+.ac-welcome-commands-label {
 	flex-shrink: 0;
 	font-size: 10px;
 	color: var(--text-faint);
@@ -256,9 +253,10 @@
 }
 
 .ac-welcome-cmd-list {
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	overflow-y: auto;
 	min-height: 0;
+	max-height: 50vh;
 	/* Subtle inset fade at bottom to hint scrollability */
 	mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
 	-webkit-mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
@@ -298,11 +296,15 @@
 }
 
 /* ---- Resume Session ---- */
+
 .ac-resume-section {
 	flex-shrink: 0;
-	margin-top: 8px;
-	margin-bottom: 12px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--background-modifier-border);
 	text-align: center;
+	width: 100%;
+	max-width: 320px;
 }
 
 .ac-chat-container .ac-resume-link {
@@ -324,6 +326,7 @@
 	gap: 6px;
 	width: 100%;
 	max-width: 280px;
+	margin: 0 auto;
 }
 
 .ac-chat-container input.ac-resume-input {
