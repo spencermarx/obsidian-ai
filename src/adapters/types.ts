@@ -72,6 +72,8 @@ export interface AgentAdapter {
 		cliSessionId?: string;
 		/** True when resuming a session that was already initialized by a prior invocation. */
 		resumeSession?: boolean;
+		/** Absolute paths to image files to include with the prompt. */
+		imagePaths?: string[];
 	}): SpawnArgs;
 
 	/**
