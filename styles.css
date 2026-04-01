@@ -8,6 +8,17 @@
      --ac-radius-lg:  16px  (bubbles, large surfaces)
 
    Transition: 150ms ease for interactions, 200ms for focus.
+
+   Specificity strategy:
+     Tier 1 — .ac-* (0,1,0)
+       Default for layout and plugin-only elements (divs, spans).
+     Tier 2 — .ac-chat-container .ac-* (0,2,0)
+       Used ONLY when Obsidian's base styles leak in and must be
+       overridden (buttons, inputs, textareas, .clickable-icon).
+     Tier 3 — .ac-chat-container element.ac-* (0,2,1)
+       Reserved for native element selectors (input, button, textarea)
+       whose Obsidian defaults are especially aggressive.
+     Never use !important except for the .ac-hidden utility.
    ============================================================ */
 
 /* ---- Utility ---- */
@@ -297,6 +308,7 @@
 
 /* ---- Resume Session ---- */
 
+/* Layout — bare class is sufficient (no Obsidian overrides to beat). */
 .ac-resume-section {
 	flex-shrink: 0;
 	margin-top: 12px;
@@ -307,6 +319,18 @@
 	max-width: 320px;
 }
 
+.ac-resume-form {
+	display: flex;
+	gap: 6px;
+	width: 100%;
+	max-width: 280px;
+	margin: 0 auto;
+}
+
+/*
+ * Obsidian overrides — container-scoped selectors (0,2,0 / 0,2,1)
+ * needed to beat Obsidian's default button, input, and interactive styles.
+ */
 .ac-chat-container .ac-resume-link {
 	color: var(--text-faint);
 	font-size: 11px;
@@ -319,14 +343,6 @@
 	color: var(--text-muted);
 	text-decoration: underline;
 	text-underline-offset: 2px;
-}
-
-.ac-resume-form {
-	display: flex;
-	gap: 6px;
-	width: 100%;
-	max-width: 280px;
-	margin: 0 auto;
 }
 
 .ac-chat-container input.ac-resume-input {
