@@ -570,7 +570,7 @@ export class ChatView extends ItemView {
 
 	private async sendMessage(): Promise<void> {
 		const text = this.inputEl.value.trim();
-		if (!text || this.isGenerating) return;
+		if ((!text && this.pendingImages.length === 0) || this.isGenerating) return;
 		if (!this.sessionId) return;
 
 		// Snapshot pending image paths before clearing
@@ -1000,10 +1000,11 @@ export class ChatView extends ItemView {
 		this.updateSendButtonState();
 	}
 
-	/** Clear all pending images, revoke object URLs, and hide the preview strip. */
+	/** Clear all pending images, revoke object URLs, delete temp files, and hide the preview strip. */
 	private clearPendingImages(): void {
 		for (const img of this.pendingImages) {
 			URL.revokeObjectURL(img.objectUrl);
+			try { fs.unlinkSync(img.tempPath); } catch { /* ignore */ }
 		}
 		this.pendingImages = [];
 		this.imagePreviewArea.empty();
