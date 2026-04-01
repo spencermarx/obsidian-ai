@@ -129,6 +129,7 @@ export class SessionManager {
 		const userMessage: AgentMessage = {
 			role: "user",
 			content: prompt,
+			imagePaths: opts?.imagePaths,
 			timestamp: Date.now(),
 		};
 		session.userMessages.push(userMessage);

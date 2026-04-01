@@ -21,6 +21,8 @@ export interface AgentMessage {
 	};
 	/** CLI session ID — set on system init events from stream-json. */
 	cliSessionId?: string;
+	/** Absolute paths to images attached to a user message. */
+	imagePaths?: string[];
 	timestamp: number;
 }
 

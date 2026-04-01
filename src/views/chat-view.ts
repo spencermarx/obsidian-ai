@@ -45,6 +45,10 @@ export class ChatView extends ItemView {
 	private activityBar: HTMLElement | null = null;
 	private activityText: HTMLElement | null = null;
 
+	// Image attachment state
+	private pendingImages: string[] = [];
+	private imagePreviewArea: HTMLElement | null = null;
+
 	// State
 	private isGenerating = false;
 	private streamingThinkingEl: HTMLElement | null = null;
@@ -172,6 +176,12 @@ export class ChatView extends ItemView {
 
 		// ── Input area ──
 		const inputArea = container.createDiv({ cls: "ac-input-area" });
+
+		// Image preview area (hidden until images are attached)
+		this.imagePreviewArea = inputArea.createDiv({
+			cls: "ac-image-preview-area ac-hidden",
+		});
+
 		const inputWrap = inputArea.createDiv({ cls: "ac-input-wrap" });
 
 		this.inputEl = inputWrap.createEl("textarea", {
@@ -471,6 +481,48 @@ export class ChatView extends ItemView {
 			this.updateSendButtonState();
 		});
 
+		// Drag-and-drop images onto input area
+		const inputArea = this.inputEl.closest(".ac-input-area") as HTMLElement;
+		if (inputArea) {
+			let dragCounter = 0;
+
+			inputArea.addEventListener("dragenter", (e) => {
+				e.preventDefault();
+				dragCounter++;
+				if (dragCounter === 1) {
+					inputArea.addClass("ac-input-area-dragover");
+				}
+			});
+
+			inputArea.addEventListener("dragleave", (e) => {
+				e.preventDefault();
+				dragCounter--;
+				if (dragCounter <= 0) {
+					dragCounter = 0;
+					inputArea.removeClass("ac-input-area-dragover");
+				}
+			});
+
+			inputArea.addEventListener("dragover", (e) => {
+				e.preventDefault();
+			});
+
+			inputArea.addEventListener("drop", (e) => {
+				e.preventDefault();
+				dragCounter = 0;
+				inputArea.removeClass("ac-input-area-dragover");
+				if (e.dataTransfer?.files) {
+					for (const file of Array.from(e.dataTransfer.files)) {
+						if (file.type.startsWith("image/")) {
+							// Electron's File object exposes .path (absolute filesystem path)
+							const filePath = (file as File & { path: string }).path;
+							if (filePath) this.addPendingImage(filePath);
+						}
+					}
+				}
+			});
+		}
+
 		// File edit revert buttons (delegated)
 		this.messagesContainer.addEventListener("click", (e) => {
 			const target = e.target as HTMLElement;
@@ -510,6 +562,14 @@ export class ChatView extends ItemView {
 		const text = this.inputEl.value.trim();
 		if (!text || this.isGenerating) return;
 		if (!this.sessionId) return;
+
+		// Capture and clear pending images
+		const imagePaths =
+			this.pendingImages.length > 0
+				? [...this.pendingImages]
+				: undefined;
+		this.pendingImages = [];
+		this.renderImagePreviewArea();
 
 		// Clear input
 		this.inputEl.value = "";
@@ -553,7 +613,10 @@ export class ChatView extends ItemView {
 				this.sessionId,
 				text,
 				context,
-				{ editApprovalMode: this.settings.editApprovalMode }
+				{
+					editApprovalMode: this.settings.editApprovalMode,
+					imagePaths,
+				}
 			);
 			this.setActivity("Starting…");
 		} catch (err) {
@@ -704,6 +767,26 @@ export class ChatView extends ItemView {
 		const el = this.messagesContainer.createDiv({
 			cls: "ac-message ac-message-user",
 		});
+
+		// Show image thumbnails if the message had images attached
+		if (message.imagePaths?.length) {
+			const grid = el.createDiv({ cls: "ac-user-image-grid" });
+			for (const imgPath of message.imagePaths) {
+				const thumb = grid.createDiv({ cls: "ac-user-image-thumb" });
+				const img = thumb.createEl("img", {
+					attr: {
+						src: `file://${imgPath}`,
+						alt: imgPath.split("/").pop() || "image",
+					},
+				});
+				img.addEventListener("error", () => {
+					thumb.empty();
+					thumb.addClass("ac-user-image-thumb-error");
+					thumb.createSpan({ text: imgPath.split("/").pop() || "image" });
+				});
+			}
+		}
+
 		const body = el.createDiv({ cls: "ac-message-body" });
 		body.createEl("p", { text: message.content });
 		this.addCopyButton(el, message.content);
@@ -827,6 +910,69 @@ export class ChatView extends ItemView {
 				}, 1500);
 			});
 		});
+	}
+
+	/** Add an image to the pending list and update the preview area. */
+	private addPendingImage(filePath: string): void {
+		if (!filePath || this.pendingImages.includes(filePath)) return;
+		this.pendingImages.push(filePath);
+		this.renderImagePreviewArea();
+	}
+
+	/** Remove an image from the pending list and update the preview area. */
+	private removePendingImage(filePath: string): void {
+		const idx = this.pendingImages.indexOf(filePath);
+		if (idx >= 0) {
+			this.pendingImages.splice(idx, 1);
+			this.renderImagePreviewArea();
+		}
+	}
+
+	/** Render (or hide) the image preview grid above the input. */
+	private renderImagePreviewArea(): void {
+		if (!this.imagePreviewArea) return;
+
+		if (this.pendingImages.length === 0) {
+			this.imagePreviewArea.addClass("ac-hidden");
+			this.imagePreviewArea.empty();
+			return;
+		}
+
+		this.imagePreviewArea.removeClass("ac-hidden");
+		this.imagePreviewArea.empty();
+
+		for (const imgPath of this.pendingImages) {
+			const item = this.imagePreviewArea.createDiv({
+				cls: "ac-image-preview-item",
+			});
+			const img = item.createEl("img", {
+				attr: {
+					src: `file://${imgPath}`,
+					alt: imgPath.split("/").pop() || "image",
+				},
+			});
+			img.addEventListener("error", () => {
+				// Replace broken image with filename
+				const parent = img.parentElement;
+				if (parent) {
+					img.remove();
+					parent.addClass("ac-image-preview-item-error");
+					parent.createSpan({
+						cls: "ac-image-preview-name",
+						text: imgPath.split("/").pop() || "image",
+					});
+				}
+			});
+
+			const removeBtn = item.createDiv({
+				cls: "ac-image-preview-remove",
+				attr: { "aria-label": "Remove image" },
+			});
+			setIcon(removeBtn, "x");
+			removeBtn.addEventListener("click", () => {
+				this.removePendingImage(imgPath);
+			});
+		}
 	}
 
 	private autoResizeInput(): void {
