@@ -67,6 +67,7 @@ export class ChatView extends ItemView {
 	private streamingMessageEl: HTMLElement | null = null;
 	private slashCommands: SlashCommand[] = [];
 	private pendingImages: PendingImage[] = [];
+	private dragEnterCount = 0;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -513,26 +514,41 @@ export class ChatView extends ItemView {
 			}
 		});
 
-		// Image drag-and-drop on the input area
+		// Image drag-and-drop on the input area.
+		// Uses a dragenter/dragleave counter to correctly track when the
+		// pointer leaves the container vs. moves between child elements.
 		const inputArea = this.inputEl.closest(".ac-input-area") as HTMLElement;
 		if (inputArea) {
 			inputArea.addEventListener("dragover", (e) => {
 				if (e.dataTransfer?.types.includes("Files")) {
 					e.preventDefault();
 					e.dataTransfer.dropEffect = "copy";
-					inputArea.addClass("ac-drop-active");
+				}
+			});
+			inputArea.addEventListener("dragenter", (e) => {
+				if (e.dataTransfer?.types.includes("Files")) {
+					e.preventDefault();
+					this.dragEnterCount++;
+					if (this.dragEnterCount === 1) {
+						inputArea.addClass("ac-drop-active");
+					}
 				}
 			});
 			inputArea.addEventListener("dragleave", () => {
-				inputArea.removeClass("ac-drop-active");
+				this.dragEnterCount--;
+				if (this.dragEnterCount <= 0) {
+					this.dragEnterCount = 0;
+					inputArea.removeClass("ac-drop-active");
+				}
 			});
 			inputArea.addEventListener("drop", (e) => {
+				e.preventDefault();
+				this.dragEnterCount = 0;
 				inputArea.removeClass("ac-drop-active");
 				const files = e.dataTransfer?.files;
 				if (!files) return;
 				for (let i = 0; i < files.length; i++) {
 					if (files[i].type.startsWith("image/")) {
-						e.preventDefault();
 						void this.addImageFile(files[i]);
 					}
 				}
