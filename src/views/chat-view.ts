@@ -514,37 +514,63 @@ export class ChatView extends ItemView {
 			}
 		});
 
-		// Image drag-and-drop on the input area.
-		// Uses a dragenter/dragleave counter to correctly track when the
-		// pointer leaves the container vs. moves between child elements.
+		// Image drag-and-drop on the chat view.
+		// Obsidian intercepts drag events at the workspace level for its own
+		// pane/file drag-drop handling, so events never reach .ac-input-area.
+		// We attach to this.contentEl with capture phase and stopPropagation
+		// to intercept before Obsidian does.
 		const inputArea = this.inputEl.closest(".ac-input-area") as HTMLElement;
-		if (inputArea) {
-			inputArea.addEventListener("dragover", (e) => {
+		const dropTarget = this.contentEl;
+
+		dropTarget.addEventListener(
+			"dragover",
+			(e) => {
 				if (e.dataTransfer?.types.includes("Files")) {
 					e.preventDefault();
+					e.stopPropagation();
 					e.dataTransfer.dropEffect = "copy";
 				}
-			});
-			inputArea.addEventListener("dragenter", (e) => {
+			},
+			{ capture: true }
+		);
+		dropTarget.addEventListener(
+			"dragenter",
+			(e) => {
 				if (e.dataTransfer?.types.includes("Files")) {
 					e.preventDefault();
+					e.stopPropagation();
 					this.dragEnterCount++;
-					if (this.dragEnterCount === 1) {
+					if (this.dragEnterCount === 1 && inputArea) {
 						inputArea.addClass("ac-drop-active");
 					}
 				}
-			});
-			inputArea.addEventListener("dragleave", () => {
+			},
+			{ capture: true }
+		);
+		dropTarget.addEventListener(
+			"dragleave",
+			(e) => {
+				if (!e.dataTransfer?.types.includes("Files")) return;
 				this.dragEnterCount--;
 				if (this.dragEnterCount <= 0) {
 					this.dragEnterCount = 0;
+					if (inputArea) {
+						inputArea.removeClass("ac-drop-active");
+					}
+				}
+			},
+			{ capture: true }
+		);
+		dropTarget.addEventListener(
+			"drop",
+			(e) => {
+				if (!e.dataTransfer?.types.includes("Files")) return;
+				e.preventDefault();
+				e.stopPropagation();
+				this.dragEnterCount = 0;
+				if (inputArea) {
 					inputArea.removeClass("ac-drop-active");
 				}
-			});
-			inputArea.addEventListener("drop", (e) => {
-				e.preventDefault();
-				this.dragEnterCount = 0;
-				inputArea.removeClass("ac-drop-active");
 				const files = e.dataTransfer?.files;
 				if (!files) return;
 				for (let i = 0; i < files.length; i++) {
@@ -552,8 +578,9 @@ export class ChatView extends ItemView {
 						void this.addImageFile(files[i]);
 					}
 				}
-			});
-		}
+			},
+			{ capture: true }
+		);
 
 		// File edit revert buttons (delegated)
 		this.messagesContainer.addEventListener("click", (e) => {
