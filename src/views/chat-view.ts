@@ -576,12 +576,12 @@ export class ChatView extends ItemView {
 		// Snapshot pending image paths before clearing
 		const imagePaths = this.pendingImages.map((img) => img.tempPath);
 
-		// Clear input and images
+		// Clear input and image UI (keep temp files for the CLI to read)
 		this.inputEl.value = "";
 		this.autoResizeInput();
 		this.updateSendButtonState();
 		this.hideAllPopups();
-		this.clearPendingImages();
+		this.resetPendingImagesUI();
 
 		// Gather vault context
 		const context = getVaultContext(this.app);
@@ -998,6 +998,16 @@ export class ChatView extends ItemView {
 		}
 		this.renderImagePreviews();
 		this.updateSendButtonState();
+	}
+
+	/** Reset UI state for pending images without deleting temp files (used when sending). */
+	private resetPendingImagesUI(): void {
+		for (const img of this.pendingImages) {
+			URL.revokeObjectURL(img.objectUrl);
+		}
+		this.pendingImages = [];
+		this.imagePreviewArea.empty();
+		this.imagePreviewArea.addClass("ac-hidden");
 	}
 
 	/** Clear all pending images, revoke object URLs, delete temp files, and hide the preview strip. */
