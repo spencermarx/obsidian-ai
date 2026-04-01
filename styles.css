@@ -1042,8 +1042,8 @@
 .ac-image-previews {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 6px;
-	padding: 0 6px;
+	gap: 8px;
+	padding: 4px 6px 0;
 }
 
 .ac-image-thumb {
@@ -1051,7 +1051,7 @@
 	width: 56px;
 	height: 56px;
 	border-radius: 8px;
-	overflow: hidden;
+	overflow: visible;
 	border: 1px solid var(--background-modifier-border);
 	flex-shrink: 0;
 }
@@ -1061,27 +1061,33 @@
 	height: 100%;
 	object-fit: cover;
 	display: block;
+	border-radius: inherit;
 }
 
 .ac-image-thumb-remove {
 	position: absolute;
-	top: 2px;
-	right: 2px;
-	width: 18px;
-	height: 18px;
+	top: -2px;
+	right: -2px;
+	width: 22px;
+	height: 22px;
 	border-radius: 50%;
-	background: var(--background-primary);
-	color: var(--text-muted);
+	background: rgba(0, 0, 0, 0.65);
+	color: rgba(255, 255, 255, 0.9);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	opacity: 0;
-	transition: opacity 0.15s ease;
+	opacity: 0.75;
+	transition: opacity 0.15s ease, background 0.15s ease;
+	cursor: pointer;
+	/* Extend clickable area beyond visual bounds */
+	padding: 4px;
+	box-sizing: content-box;
+	margin: -4px;
 }
 
 .ac-image-thumb-remove svg {
-	width: 12px;
-	height: 12px;
+	width: 14px;
+	height: 14px;
 }
 
 .ac-image-thumb:hover .ac-image-thumb-remove {
@@ -1089,8 +1095,8 @@
 }
 
 .ac-image-thumb-remove:hover {
-	color: var(--text-error);
-	background: var(--background-secondary);
+	background: rgba(220, 50, 50, 0.85);
+	color: white;
 }
 
 /* Drop target highlight */
