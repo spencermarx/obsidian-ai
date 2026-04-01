@@ -58,8 +58,9 @@ export class ChatView extends ItemView {
 	private activityBar: HTMLElement | null = null;
 	private activityText: HTMLElement | null = null;
 
-	// Image preview area
+	// Image input
 	private imagePreviewArea!: HTMLElement;
+	private inputArea!: HTMLElement;
 
 	// State
 	private isGenerating = false;
@@ -190,14 +191,14 @@ export class ChatView extends ItemView {
 		this.mentionPopup.addClass("ac-hidden");
 
 		// ── Input area ──
-		const inputArea = container.createDiv({ cls: "ac-input-area" });
+		this.inputArea = container.createDiv({ cls: "ac-input-area" });
 
-		// Image preview area (hidden until images are attached)
-		this.imagePreviewArea = inputArea.createDiv({
-			cls: "ac-image-preview-area ac-hidden",
+		// Image preview strip (hidden until images are attached)
+		this.imagePreviewArea = this.inputArea.createDiv({
+			cls: "ac-image-previews ac-hidden",
 		});
 
-		const inputWrap = inputArea.createDiv({ cls: "ac-input-wrap" });
+		const inputWrap = this.inputArea.createDiv({ cls: "ac-input-wrap" });
 
 		this.inputEl = inputWrap.createEl("textarea", {
 			cls: "ac-input",
@@ -221,11 +222,8 @@ export class ChatView extends ItemView {
 		setIcon(this.stopBtn, "square");
 		this.stopBtn.addClass("ac-hidden");
 
-		// ── Image preview strip (between input and toolbar) ──
-		this.imagePreviewArea = inputArea.createDiv({ cls: "ac-image-previews ac-hidden" });
-
 		// ── Toolbar below input ──
-		const toolbar = inputArea.createDiv({ cls: "ac-toolbar" });
+		const toolbar = this.inputArea.createDiv({ cls: "ac-toolbar" });
 
 		// Permission mode toggle
 		const permWrap = toolbar.createDiv({ cls: "ac-toolbar-item" });
@@ -519,7 +517,6 @@ export class ChatView extends ItemView {
 		// pane/file drag-drop handling, so events never reach .ac-input-area.
 		// We attach to this.contentEl with capture phase and stopPropagation
 		// to intercept before Obsidian does.
-		const inputArea = this.inputEl.closest(".ac-input-area") as HTMLElement;
 		const dropTarget = this.contentEl;
 
 		dropTarget.addEventListener(
@@ -540,8 +537,8 @@ export class ChatView extends ItemView {
 					e.preventDefault();
 					e.stopPropagation();
 					this.dragEnterCount++;
-					if (this.dragEnterCount === 1 && inputArea) {
-						inputArea.addClass("ac-drop-active");
+					if (this.dragEnterCount === 1) {
+						this.inputArea.addClass("ac-drop-active");
 					}
 				}
 			},
@@ -554,9 +551,7 @@ export class ChatView extends ItemView {
 				this.dragEnterCount--;
 				if (this.dragEnterCount <= 0) {
 					this.dragEnterCount = 0;
-					if (inputArea) {
-						inputArea.removeClass("ac-drop-active");
-					}
+					this.inputArea.removeClass("ac-drop-active");
 				}
 			},
 			{ capture: true }
@@ -568,9 +563,7 @@ export class ChatView extends ItemView {
 				e.preventDefault();
 				e.stopPropagation();
 				this.dragEnterCount = 0;
-				if (inputArea) {
-					inputArea.removeClass("ac-drop-active");
-				}
+				this.inputArea.removeClass("ac-drop-active");
 				const files = e.dataTransfer?.files;
 				if (!files) return;
 				for (let i = 0; i < files.length; i++) {
