@@ -5,6 +5,19 @@ import { SessionManager, SessionStatus } from "../session/session-manager";
 import { ChatRenderer } from "./chat-renderer";
 import { getVaultContext } from "../utils/vault-context";
 import type { AgenticCopilotSettings } from "../constants";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+
+/** A pending image awaiting send. */
+interface PendingImage {
+	/** Absolute path to the temp file. */
+	tempPath: string;
+	/** Original file name for display. */
+	name: string;
+	/** Object URL for the thumbnail preview. */
+	objectUrl: string;
+}
 
 /**
  * The main chat panel view — an Obsidian ItemView that provides
@@ -45,15 +58,15 @@ export class ChatView extends ItemView {
 	private activityBar: HTMLElement | null = null;
 	private activityText: HTMLElement | null = null;
 
-	// Image attachment state
-	private pendingImages: string[] = [];
-	private imagePreviewArea: HTMLElement | null = null;
+	// Image preview area
+	private imagePreviewArea!: HTMLElement;
 
 	// State
 	private isGenerating = false;
 	private streamingThinkingEl: HTMLElement | null = null;
 	private streamingMessageEl: HTMLElement | null = null;
 	private slashCommands: SlashCommand[] = [];
+	private pendingImages: PendingImage[] = [];
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -107,6 +120,7 @@ export class ChatView extends ItemView {
 	}
 
 	onClose(): Promise<void> {
+		this.clearPendingImages();
 		if (this.sessionId) {
 			this.sessionManager.destroySession(this.sessionId);
 		}
@@ -205,6 +219,9 @@ export class ChatView extends ItemView {
 		});
 		setIcon(this.stopBtn, "square");
 		this.stopBtn.addClass("ac-hidden");
+
+		// ── Image preview strip (between input and toolbar) ──
+		this.imagePreviewArea = inputArea.createDiv({ cls: "ac-image-previews ac-hidden" });
 
 		// ── Toolbar below input ──
 		const toolbar = inputArea.createDiv({ cls: "ac-toolbar" });
@@ -481,43 +498,42 @@ export class ChatView extends ItemView {
 			this.updateSendButtonState();
 		});
 
-		// Drag-and-drop images onto input area
+		// Image paste handler
+		this.inputEl.addEventListener("paste", (e) => {
+			const items = e.clipboardData?.items;
+			if (!items) return;
+			for (let i = 0; i < items.length; i++) {
+				const item = items[i];
+				if (item.type.startsWith("image/")) {
+					e.preventDefault();
+					const file = item.getAsFile();
+					if (file) void this.addImageFile(file);
+					return;
+				}
+			}
+		});
+
+		// Image drag-and-drop on the input area
 		const inputArea = this.inputEl.closest(".ac-input-area") as HTMLElement;
 		if (inputArea) {
-			let dragCounter = 0;
-
-			inputArea.addEventListener("dragenter", (e) => {
-				e.preventDefault();
-				dragCounter++;
-				if (dragCounter === 1) {
-					inputArea.addClass("ac-input-area-dragover");
-				}
-			});
-
-			inputArea.addEventListener("dragleave", (e) => {
-				e.preventDefault();
-				dragCounter--;
-				if (dragCounter <= 0) {
-					dragCounter = 0;
-					inputArea.removeClass("ac-input-area-dragover");
-				}
-			});
-
 			inputArea.addEventListener("dragover", (e) => {
-				e.preventDefault();
+				if (e.dataTransfer?.types.includes("Files")) {
+					e.preventDefault();
+					e.dataTransfer.dropEffect = "copy";
+					inputArea.addClass("ac-drop-active");
+				}
 			});
-
+			inputArea.addEventListener("dragleave", () => {
+				inputArea.removeClass("ac-drop-active");
+			});
 			inputArea.addEventListener("drop", (e) => {
-				e.preventDefault();
-				dragCounter = 0;
-				inputArea.removeClass("ac-input-area-dragover");
-				if (e.dataTransfer?.files) {
-					for (const file of Array.from(e.dataTransfer.files)) {
-						if (file.type.startsWith("image/")) {
-							// Electron's File object exposes .path (absolute filesystem path)
-							const filePath = (file as File & { path: string }).path;
-							if (filePath) this.addPendingImage(filePath);
-						}
+				inputArea.removeClass("ac-drop-active");
+				const files = e.dataTransfer?.files;
+				if (!files) return;
+				for (let i = 0; i < files.length; i++) {
+					if (files[i].type.startsWith("image/")) {
+						e.preventDefault();
+						void this.addImageFile(files[i]);
 					}
 				}
 			});
@@ -560,22 +576,18 @@ export class ChatView extends ItemView {
 
 	private async sendMessage(): Promise<void> {
 		const text = this.inputEl.value.trim();
-		if (!text || this.isGenerating) return;
+		if ((!text && this.pendingImages.length === 0) || this.isGenerating) return;
 		if (!this.sessionId) return;
 
-		// Capture and clear pending images
-		const imagePaths =
-			this.pendingImages.length > 0
-				? [...this.pendingImages]
-				: undefined;
-		this.pendingImages = [];
-		this.renderImagePreviewArea();
+		// Snapshot pending image paths before clearing
+		const imagePaths = this.pendingImages.map((img) => img.tempPath);
 
-		// Clear input
+		// Clear input and image UI (keep temp files for the CLI to read)
 		this.inputEl.value = "";
 		this.autoResizeInput();
 		this.updateSendButtonState();
 		this.hideAllPopups();
+		this.resetPendingImagesUI();
 
 		// Gather vault context
 		const context = getVaultContext(this.app);
@@ -615,7 +627,7 @@ export class ChatView extends ItemView {
 				context,
 				{
 					editApprovalMode: this.settings.editApprovalMode,
-					imagePaths,
+					imagePaths: imagePaths.length > 0 ? imagePaths : undefined,
 				}
 			);
 			this.setActivity("Starting…");
@@ -912,69 +924,6 @@ export class ChatView extends ItemView {
 		});
 	}
 
-	/** Add an image to the pending list and update the preview area. */
-	private addPendingImage(filePath: string): void {
-		if (!filePath || this.pendingImages.includes(filePath)) return;
-		this.pendingImages.push(filePath);
-		this.renderImagePreviewArea();
-	}
-
-	/** Remove an image from the pending list and update the preview area. */
-	private removePendingImage(filePath: string): void {
-		const idx = this.pendingImages.indexOf(filePath);
-		if (idx >= 0) {
-			this.pendingImages.splice(idx, 1);
-			this.renderImagePreviewArea();
-		}
-	}
-
-	/** Render (or hide) the image preview grid above the input. */
-	private renderImagePreviewArea(): void {
-		if (!this.imagePreviewArea) return;
-
-		if (this.pendingImages.length === 0) {
-			this.imagePreviewArea.addClass("ac-hidden");
-			this.imagePreviewArea.empty();
-			return;
-		}
-
-		this.imagePreviewArea.removeClass("ac-hidden");
-		this.imagePreviewArea.empty();
-
-		for (const imgPath of this.pendingImages) {
-			const item = this.imagePreviewArea.createDiv({
-				cls: "ac-image-preview-item",
-			});
-			const img = item.createEl("img", {
-				attr: {
-					src: `file://${imgPath}`,
-					alt: imgPath.split("/").pop() || "image",
-				},
-			});
-			img.addEventListener("error", () => {
-				// Replace broken image with filename
-				const parent = img.parentElement;
-				if (parent) {
-					img.remove();
-					parent.addClass("ac-image-preview-item-error");
-					parent.createSpan({
-						cls: "ac-image-preview-name",
-						text: imgPath.split("/").pop() || "image",
-					});
-				}
-			});
-
-			const removeBtn = item.createDiv({
-				cls: "ac-image-preview-remove",
-				attr: { "aria-label": "Remove image" },
-			});
-			setIcon(removeBtn, "x");
-			removeBtn.addEventListener("click", () => {
-				this.removePendingImage(imgPath);
-			});
-		}
-	}
-
 	private autoResizeInput(): void {
 		// Reset to auto so scrollHeight reflects the actual content size
 		this.inputEl.setCssProps({ "--ac-input-height": "auto" });
@@ -985,11 +934,117 @@ export class ChatView extends ItemView {
 	}
 
 	private updateSendButtonState(): void {
-		if (this.inputEl.value.trim()) {
+		if (this.inputEl.value.trim() || this.pendingImages.length > 0) {
 			this.sendBtn.addClass("ac-btn-send-active");
 		} else {
 			this.sendBtn.removeClass("ac-btn-send-active");
 		}
+	}
+
+	// ── Image handling ──
+
+	/**
+	 * Save a File (from clipboard or drop) to a temp directory and add it
+	 * to the pending images list with a thumbnail preview.
+	 */
+	private async addImageFile(file: File): Promise<void> {
+		try {
+			const buffer = Buffer.from(await file.arrayBuffer());
+			const ext = this.imageExtFromMime(file.type);
+			const tempDir = path.join(os.tmpdir(), "agentic-copilot-images");
+			fs.mkdirSync(tempDir, { recursive: true });
+			const tempPath = path.join(
+				tempDir,
+				`img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+			);
+			fs.writeFileSync(tempPath, buffer);
+
+			const objectUrl = URL.createObjectURL(file);
+			const pending: PendingImage = {
+				tempPath,
+				name: file.name || path.basename(tempPath),
+				objectUrl,
+			};
+			this.pendingImages.push(pending);
+			this.renderImagePreviews();
+			this.updateSendButtonState();
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Failed to save image";
+			new Notice(`Image error: ${msg}`);
+		}
+	}
+
+	/** Map MIME type to file extension. */
+	private imageExtFromMime(mime: string): string {
+		switch (mime) {
+			case "image/png": return ".png";
+			case "image/jpeg": return ".jpg";
+			case "image/gif": return ".gif";
+			case "image/webp": return ".webp";
+			case "image/svg+xml": return ".svg";
+			case "image/bmp": return ".bmp";
+			default: return ".png";
+		}
+	}
+
+	/** Render the image preview strip from current pendingImages state. */
+	private renderImagePreviews(): void {
+		this.imagePreviewArea.empty();
+		if (this.pendingImages.length === 0) {
+			this.imagePreviewArea.addClass("ac-hidden");
+			return;
+		}
+		this.imagePreviewArea.removeClass("ac-hidden");
+
+		for (let i = 0; i < this.pendingImages.length; i++) {
+			const img = this.pendingImages[i];
+			const thumb = this.imagePreviewArea.createDiv({ cls: "ac-image-thumb" });
+			const imgEl = thumb.createEl("img", {
+				attr: { src: img.objectUrl, alt: img.name },
+			});
+			imgEl.addClass("ac-image-thumb-img");
+
+			const removeBtn = thumb.createDiv({
+				cls: "ac-image-thumb-remove clickable-icon",
+				attr: { "aria-label": "Remove image" },
+			});
+			setIcon(removeBtn, "x");
+			const idx = i;
+			removeBtn.addEventListener("click", () => this.removePendingImage(idx));
+		}
+	}
+
+	/** Remove a pending image by index, revoke its object URL, and re-render. */
+	private removePendingImage(index: number): void {
+		const removed = this.pendingImages.splice(index, 1);
+		for (const img of removed) {
+			URL.revokeObjectURL(img.objectUrl);
+			// Best-effort temp file cleanup
+			try { fs.unlinkSync(img.tempPath); } catch { /* ignore */ }
+		}
+		this.renderImagePreviews();
+		this.updateSendButtonState();
+	}
+
+	/** Reset UI state for pending images without deleting temp files (used when sending). */
+	private resetPendingImagesUI(): void {
+		for (const img of this.pendingImages) {
+			URL.revokeObjectURL(img.objectUrl);
+		}
+		this.pendingImages = [];
+		this.imagePreviewArea.empty();
+		this.imagePreviewArea.addClass("ac-hidden");
+	}
+
+	/** Clear all pending images, revoke object URLs, delete temp files, and hide the preview strip. */
+	private clearPendingImages(): void {
+		for (const img of this.pendingImages) {
+			URL.revokeObjectURL(img.objectUrl);
+			try { fs.unlinkSync(img.tempPath); } catch { /* ignore */ }
+		}
+		this.pendingImages = [];
+		this.imagePreviewArea.empty();
+		this.imagePreviewArea.addClass("ac-hidden");
 	}
 
 	// ── Autocomplete ──
