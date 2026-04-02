@@ -29,7 +29,9 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 	 * content_block_stop for each block. The block type tells us whether
 	 * the deltas are thinking or text.
 	 */
-	private currentBlockType: "thinking" | "text" | null = null;
+	private currentBlockType: "thinking" | "text" | "tool_use" | null = null;
+	private currentToolName: string | null = null;
+	private currentToolInput = "";
 
 	async detect(): Promise<boolean> {
 		const path = await whichBinary(this.binaryName);
@@ -253,20 +255,10 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			if (blockType === "thinking") {
 				this.currentBlockType = "thinking";
 			} else if (blockType === "tool_use") {
-				this.currentBlockType = null;
-				// Emit the tool_use start as a tool message
-				const name = (block?.name as string) || "tool";
-				return [
-					{
-						role: "tool" as const,
-						content: `Tool: ${name}`,
-						toolUse: {
-							name,
-							input: "",
-						},
-						timestamp: Date.now(),
-					},
-				];
+				this.currentBlockType = "tool_use";
+				this.currentToolName = (block?.name as string) || "tool";
+				this.currentToolInput = "";
+				return [];
 			} else {
 				this.currentBlockType = "text";
 			}
@@ -296,6 +288,39 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		}
 
 		if (type === "content_block_stop") {
+			// If we just finished a tool_use block, emit it now with
+			// the accumulated input (file paths, patterns, etc.)
+			if (this.currentBlockType === "tool_use" && this.currentToolName) {
+				const name = this.currentToolName;
+				const input = this.currentToolInput;
+				this.currentBlockType = null;
+				this.currentToolName = null;
+				this.currentToolInput = "";
+
+				const msg: AgentMessage = {
+					role: "tool",
+					content: `Tool: ${name}`,
+					toolUse: { name, input },
+					timestamp: Date.now(),
+				};
+
+				// Detect file edits
+				if (/^(Write|Edit|write|edit)$/.test(name)) {
+					try {
+						const parsed = JSON.parse(input);
+						const filePath = parsed.file_path || parsed.path || "";
+						if (filePath) {
+							msg.fileEdit = {
+								filePath,
+								newContent: parsed.content || parsed.new_string || "",
+								oldContent: parsed.old_string,
+							};
+						}
+					} catch { /* input may not be valid JSON */ }
+				}
+
+				return [msg];
+			}
 			this.currentBlockType = null;
 			return [];
 		}
@@ -310,9 +335,12 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 			// Signature deltas (end-of-thinking verification) — ignore
 			if (deltaType === "signature_delta") return [];
 
-			// Input JSON deltas (tool input streaming) — ignore for now,
-			// the complete tool_use event will be handled separately
-			if (deltaType === "input_json_delta") return [];
+			// Input JSON deltas — accumulate for the tool_use block
+			if (deltaType === "input_json_delta") {
+				const partial = (delta.partial_json as string) || "";
+				this.currentToolInput += partial;
+				return [];
+			}
 
 			// Thinking delta
 			if (
@@ -369,104 +397,38 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		}
 
 		// ---- Full assistant messages (non-streaming or message wrappers)
+		// In stream-json mode these are redundant summaries of content
+		// already delivered via content_block_delta events. Emitting them
+		// would double the text in the MessageQueue buffer.  Skip them.
 		if (type === "assistant" || type === "text") {
-			const message = event.message as
-				| Record<string, unknown>
-				| undefined;
-
-			// The message.content may be an array of content blocks
-			const rawContent = message?.content ?? event.content;
-			if (Array.isArray(rawContent)) {
-				return this.parseContentArray(rawContent);
-			}
-
-			const content = (rawContent as string) || "";
-			if (!content) return [];
-			return [
-				{
-					role: "assistant",
-					content,
-					timestamp: Date.now(),
-				},
-			];
+			return [];
 		}
 
 		// ---- Tool use / tool result
+		// In stream-json mode, tool_use is already emitted from
+		// content_block_stop with accumulated input.  These top-level
+		// events are redundant summaries — skip them.
 		if (type === "tool_use" || type === "tool_result") {
-			const name = (event.name as string) || (type as string);
-			const input =
-				typeof event.input === "string"
-					? event.input
-					: JSON.stringify(event.input || {});
-			const output =
-				typeof event.output === "string"
-					? event.output
-					: event.content
-						? JSON.stringify(event.content)
-						: undefined;
-
-			const msg: AgentMessage = {
-				role: "tool",
-				content: `Tool: ${name}`,
-				toolUse: { name, input, output },
-				timestamp: Date.now(),
-			};
-
-			// Check if this is a file edit tool
-			if (
-				name === "Write" ||
-				name === "Edit" ||
-				name === "write" ||
-				name === "edit"
-			) {
-				const parsedInput =
-					typeof event.input === "object"
-						? (event.input as Record<string, unknown>)
-						: {};
-				const filePath =
-					(parsedInput.file_path as string) ||
-					(parsedInput.path as string) ||
-					"";
-				const newContent =
-					(parsedInput.content as string) ||
-					(parsedInput.new_string as string) ||
-					"";
-
-				if (filePath) {
-					msg.fileEdit = {
-						filePath,
-						newContent,
-						oldContent: parsedInput.old_string as
-							| string
-							| undefined,
-					};
-				}
-			}
-
-			return [msg];
+			return [];
 		}
 
 		// ---- Result summary
+		// The result event contains the full final text, but we've already
+		// streamed all content via content_block_delta events. Only extract
+		// the session_id — emitting the text again would duplicate it.
 		if (type === "result") {
-			const messages: AgentMessage[] = [];
 			const sessionId = event.session_id as string | undefined;
 			if (sessionId) {
-				messages.push({
-					role: "system",
-					content: "",
-					cliSessionId: sessionId,
-					timestamp: Date.now(),
-				});
+				return [
+					{
+						role: "system",
+						content: "",
+						cliSessionId: sessionId,
+						timestamp: Date.now(),
+					},
+				];
 			}
-			const result = (event.result as string) || "";
-			if (result) {
-				messages.push({
-					role: "assistant",
-					content: result,
-					timestamp: Date.now(),
-				});
-			}
-			return messages;
+			return [];
 		}
 
 		return [];
