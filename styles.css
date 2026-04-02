@@ -51,6 +51,18 @@
 }
 
 /* ---- Chat Container ---- */
+
+/*
+ * Obsidian's .view-content has overflow-y:auto by default, which creates a
+ * competing scroll container.  When our plugin is loaded, disable the outer
+ * scroll so .ac-messages is the sole scrolling surface.  Also zero out any
+ * padding Obsidian injects so our flex layout fills the leaf exactly.
+ */
+.view-content:has(> .ac-chat-container) {
+	overflow: hidden;
+	padding: 0;
+}
+
 .ac-chat-container {
 	display: flex;
 	flex-direction: column;
@@ -192,7 +204,7 @@
 	flex: 1 1 0%;
 	overflow-y: auto;
 	overflow-x: hidden;
-	padding: 12px 16px;
+	padding: 12px 10px;
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
@@ -393,6 +405,7 @@
 
 /* ---- Message Bubbles ---- */
 .ac-message {
+	flex-shrink: 0;
 	padding: 8px 12px;
 	border-radius: 8px;
 	max-width: 100%;
@@ -432,7 +445,13 @@
 	color: inherit;
 }
 
-/* -- Copy Button (shared by user & assistant messages) -- */
+/* -- Copy Button -- */
+
+/*
+ * Unified copy button: absolute top-right, invisible by default.
+ * On hover, appears as a solid pill button with background so it
+ * reads clearly over any content underneath.
+ */
 .ac-message {
 	position: relative;
 }
@@ -444,38 +463,17 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 24px;
-	height: 24px;
-	border-radius: 6px;
-	color: var(--text-faint);
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	color: var(--text-muted);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 	opacity: 0;
-	transition: opacity 0.15s ease, background 0.15s ease;
+	transition: opacity 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 	cursor: pointer;
 	z-index: 1;
-}
-
-.ac-message:hover .ac-copy-btn {
-	opacity: 1;
-}
-
-.ac-copy-btn:hover {
-	background: var(--background-modifier-hover);
-	color: var(--text-muted);
-}
-
-/* On accent-colored user bubbles, use white tones */
-.ac-message-user .ac-copy-btn {
-	color: var(--text-on-accent);
-	opacity: 0;
-}
-
-.ac-message-user:hover .ac-copy-btn {
-	opacity: 0.6;
-}
-
-.ac-message-user .ac-copy-btn:hover {
-	background: rgba(255, 255, 255, 0.15);
-	opacity: 1;
 }
 
 .ac-copy-btn svg {
@@ -483,13 +481,36 @@
 	height: 13px;
 }
 
+.ac-message:hover .ac-copy-btn {
+	opacity: 1;
+}
+
+.ac-copy-btn:hover {
+	background: var(--background-secondary);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+	color: var(--text-normal);
+}
+
 .ac-copy-btn-done {
 	opacity: 1 !important;
 	color: var(--text-success, #10b981);
 }
 
+/* User bubble: same theme button, no opacity tricks */
+.ac-message-user .ac-copy-btn {
+	color: var(--text-muted);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.ac-message-user .ac-copy-btn:hover {
+	background: var(--background-secondary);
+	color: var(--text-normal);
+}
+
 .ac-message-user .ac-copy-btn-done {
-	color: var(--text-on-accent);
+	color: var(--text-success, #10b981);
 }
 
 /* -- Assistant Message -- */
@@ -504,18 +525,37 @@
 .ac-message-tool {
 	background: transparent;
 	color: var(--text-normal);
-	align-self: flex-start;
+	align-self: stretch;
 	padding: 2px 0;
 }
 
 /* -- Error Message -- */
 .ac-message-error {
-	background: rgba(var(--background-modifier-error-rgb, 255, 0, 0), 0.06);
+	background: transparent;
+	color: var(--text-muted);
+	align-self: flex-start;
+	border: none;
+	padding: 4px 0;
+	margin-top: 4px;
+}
+
+.ac-message-error .ac-message-header {
+	display: none;
+}
+
+.ac-message-error .ac-message-body {
+	font-size: 12px;
+	color: var(--text-faint);
+}
+
+.ac-message-error .ac-message-body p {
+	margin: 0;
+}
+
+.ac-message-error .ac-message-body p::before {
+	content: "Error: ";
 	color: var(--text-error);
-	align-self: stretch;
-	border: 1px solid rgba(var(--background-modifier-error-rgb, 255, 0, 0), 0.15);
-	border-radius: 8px;
-	margin-top: 8px;
+	font-weight: 500;
 }
 
 .ac-message-header {
@@ -688,43 +728,56 @@
 .ac-tool-section strong { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
 .ac-tool-section pre { margin: 4px 0 0 0; font-size: 11px; white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
 
-/* ---- Tool Chips (inline compact) ---- */
-.ac-tool-chip {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 3px 10px;
-	margin: 2px 0;
-	border-radius: 6px;
-	background: var(--background-secondary);
+/* ---- Tool Calls (persistent collapsible — matches thinking blocks) ---- */
+.ac-tool-call {
+	flex-shrink: 0;
 	border: 1px solid var(--background-modifier-border);
-	font-size: 11px;
-	line-height: 1.4;
-	max-width: 100%;
+	border-radius: 8px;
+	overflow: hidden;
+	margin: 2px 0;
 }
 
-.ac-tool-chip-icon {
+.ac-tool-call-summary {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 10px;
+	cursor: pointer;
+	background: var(--background-secondary);
+	font-size: 11px;
+	user-select: none;
+	color: var(--text-muted);
+	transition: background 0.15s ease;
+	list-style: none;
+}
+
+.ac-tool-call-summary::-webkit-details-marker { display: none; }
+
+.ac-tool-call-summary:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ac-tool-call-icon {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
 	color: var(--text-faint);
 }
 
-.ac-tool-chip-icon svg {
+.ac-tool-call-icon svg {
 	width: 12px;
 	height: 12px;
 }
 
-.ac-tool-chip-name {
-	font-family: var(--font-monospace);
+.ac-tool-call-name {
 	font-weight: 500;
 	font-size: 11px;
-	color: var(--interactive-accent);
+	color: var(--text-muted);
 	flex-shrink: 0;
 }
 
-.ac-tool-chip-summary {
-	color: var(--text-muted);
+.ac-tool-call-desc {
+	color: var(--text-faint);
 	font-family: var(--font-monospace);
 	font-size: 11px;
 	overflow: hidden;
@@ -733,9 +786,44 @@
 	min-width: 0;
 }
 
+/* Hide the content area entirely when empty */
+.ac-tool-call-content:empty {
+	display: none;
+}
+
+.ac-tool-call-content {
+	padding: 10px 12px;
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: 11px;
+	max-height: 200px;
+	overflow-y: auto;
+	background: var(--background-primary);
+}
+
+.ac-tool-call-content pre {
+	margin: 0;
+	padding: 8px 10px;
+	font-size: 11px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	word-break: break-all;
+	background: var(--background-secondary);
+	border-radius: 6px;
+	color: var(--text-muted);
+}
+
+.ac-tool-call-content pre + pre {
+	margin-top: 6px;
+}
+
+.ac-tool-call-content code {
+	font-family: var(--font-monospace);
+	font-size: 11px;
+}
+
 /* ---- File Edit Blocks ---- */
 .ac-file-edit {
-	margin: 6px 0;
+	margin: 2px 0;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
 	overflow: hidden;
@@ -744,11 +832,10 @@
 .ac-file-edit-header {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 7px 12px;
+	gap: 6px;
+	padding: 5px 10px;
 	background: var(--background-secondary);
-	border-bottom: 1px solid var(--background-modifier-border);
-	font-size: 12px;
+	font-size: 11px;
 	min-width: 0;
 }
 
@@ -760,85 +847,107 @@
 }
 
 .ac-file-edit-icon svg {
-	width: 14px;
-	height: 14px;
+	width: 12px;
+	height: 12px;
 }
 
 .ac-file-edit-path {
 	font-family: var(--font-monospace);
 	font-weight: 500;
-	font-size: 12px;
-	overflow-wrap: break-word;
-	word-break: break-all;
+	font-size: 11px;
+	color: var(--text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	min-width: 0;
 }
 
 .ac-file-edit-diff {
-	max-height: 300px;
+	max-height: 160px;
 	overflow: auto;
+	border-top: 1px solid var(--background-modifier-border);
+	padding: 6px 10px;
 }
 
 .ac-diff {
 	margin: 0;
-	padding: 8px 12px;
+	padding: 0;
 	font-size: 11px;
 	line-height: 1.5;
+	background: transparent;
+}
+
+.ac-diff-removed,
+.ac-diff-added {
+	padding: 1px 8px;
+	border-left: 2px solid transparent;
 }
 
 .ac-diff-removed {
-	background: hsla(0, 60%, 50%, 0.10);
+	border-left-color: var(--text-error);
 	color: var(--text-error);
 }
 
 .ac-diff-added {
-	background: hsla(120, 60%, 40%, 0.10);
-	color: var(--text-success, var(--interactive-accent));
+	border-left-color: var(--text-success, #10b981);
+	color: var(--text-success, #10b981);
 }
 
-.ac-diff-new pre { margin: 0; }
+.ac-diff-new {
+	padding: 0;
+}
+
+.ac-diff-new pre {
+	margin: 0;
+	font-size: 11px;
+	line-height: 1.5;
+	padding: 2px 8px;
+	border-left: 2px solid var(--text-success, #10b981);
+	color: var(--text-normal);
+}
 
 .ac-file-edit-actions {
 	display: flex;
+	align-items: center;
 	gap: 8px;
-	padding: 8px 12px;
+	padding: 4px 10px;
 	border-top: 1px solid var(--background-modifier-border);
 	background: var(--background-secondary);
 }
 
 .ac-file-edit-accepted {
-	border-color: var(--text-success, var(--interactive-accent));
+	border-color: var(--background-modifier-border);
 }
 
 .ac-file-edit-rejected { opacity: 0.5; }
 
 .ac-file-edit-status {
-	font-size: 12px;
+	font-size: 10px;
 	font-weight: 500;
-	color: var(--text-muted);
+	color: var(--text-faint);
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
 }
 
 /* ---- Inline Activity Indicator ---- */
 .ac-activity-inline {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 6px 12px;
+	gap: 6px;
+	padding: 4px 0;
 	align-self: flex-start;
-	border-radius: 8px;
-	background: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	margin-top: 4px;
 }
 
 .ac-activity-spinner {
 	display: block;
-	width: 12px;
-	height: 12px;
+	width: 10px;
+	height: 10px;
 	flex-shrink: 0;
 	border-radius: 50%;
-	border: 1.5px solid var(--background-modifier-border);
-	border-top-color: var(--interactive-accent);
-	animation: ac-spin 0.8s linear infinite;
+	border: 1.5px solid transparent;
+	border-top-color: var(--text-faint);
+	border-right-color: var(--text-faint);
+	animation: ac-spin 0.7s linear infinite;
 }
 
 @keyframes ac-spin {
@@ -846,16 +955,17 @@
 }
 
 .ac-activity-text {
-	font-size: 12px;
-	color: var(--text-muted);
-	font-weight: 500;
+	font-size: 11.5px;
+	color: var(--text-faint);
+	font-weight: 400;
+	letter-spacing: 0.01em;
 }
 
 /* ---- Input Area ---- */
 .ac-input-area {
 	display: flex;
 	flex-direction: column;
-	padding: 8px 12px 10px 12px;
+	padding: 8px 0 10px 0;
 	background: var(--background-primary);
 	flex-shrink: 0;
 	gap: 6px;
@@ -867,8 +977,8 @@
 	align-items: flex-end;
 	background: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 12px;
-	padding: 4px 6px 4px 14px;
+	border-radius: 8px;
+	padding: 4px 6px 4px 10px;
 	transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -930,11 +1040,11 @@
 	flex-shrink: 0;
 }
 
-/* Override Obsidian's .clickable-icon styles */
-.ac-chat-container .clickable-icon,
-.ac-chat-container .clickable-icon:hover,
-.ac-chat-container .clickable-icon:active,
-.ac-chat-container .clickable-icon:focus {
+/* Override Obsidian's .clickable-icon styles (except copy buttons) */
+.ac-chat-container .clickable-icon:not(.ac-copy-btn),
+.ac-chat-container .clickable-icon:not(.ac-copy-btn):hover,
+.ac-chat-container .clickable-icon:not(.ac-copy-btn):active,
+.ac-chat-container .clickable-icon:not(.ac-copy-btn):focus {
 	background: transparent;
 	border: none;
 	outline: none;
@@ -985,8 +1095,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	/* Align left edge with input text (input-wrap has 14px left padding) */
-	padding: 0 6px;
+	padding: 0;
 	min-height: 24px;
 }
 
