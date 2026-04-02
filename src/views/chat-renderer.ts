@@ -88,6 +88,9 @@ export class ChatRenderer {
 	 * Uses a per-container generation counter so that stale renders
 	 * (superseded while the async markdown render was in flight) are
 	 * discarded instead of appending duplicate content.
+	 *
+	 * Called at most ~7x/sec via the ChatView throttle, so the
+	 * empty+append pattern does not cause visible layout thrash.
 	 */
 	async renderStreamingText(
 		content: string,
@@ -106,25 +109,46 @@ export class ChatRenderer {
 	}
 
 	/**
-	 * Render a compact tool chip (public — used by ChatView for inline tools).
+	 * Render a tool call as a persistent collapsible <details> block.
+	 * Collapsed by default — expandable for auditing input/output.
 	 */
-	renderToolChip(message: AgentMessage, container: HTMLElement): void {
+	renderToolCall(message: AgentMessage, container: HTMLElement): void {
 		if (!message.toolUse) return;
 
-		const chip = container.createDiv({ cls: "ac-tool-chip" });
-		const iconEl = chip.createSpan({ cls: "ac-tool-chip-icon" });
+		const details = container.createEl("details", {
+			cls: "ac-tool-call",
+		});
+		const summary = details.createEl("summary", {
+			cls: "ac-tool-call-summary",
+		});
+		const iconEl = summary.createSpan({ cls: "ac-tool-call-icon" });
 		setIcon(iconEl, this.getToolIconName(message.toolUse.name));
-		chip.createSpan({
-			cls: "ac-tool-chip-name",
+		summary.createSpan({
+			cls: "ac-tool-call-name",
 			text: message.toolUse.name,
 		});
 
-		const summary = this.extractToolSummary(
+		const desc = this.extractToolSummary(
 			message.toolUse.name,
 			message.toolUse.input
 		);
-		if (summary) {
-			chip.createSpan({ cls: "ac-tool-chip-summary", text: summary });
+		if (desc) {
+			summary.createSpan({ cls: "ac-tool-call-desc", text: desc });
+		}
+
+		// Expandable content: input + output
+		const content = details.createDiv({ cls: "ac-tool-call-content" });
+		if (message.toolUse.input) {
+			const pre = content.createEl("pre");
+			pre.createEl("code", {
+				text: this.truncate(message.toolUse.input, 2000),
+			});
+		}
+		if (message.toolUse.output) {
+			const pre = content.createEl("pre");
+			pre.createEl("code", {
+				text: this.truncate(message.toolUse.output, 2000),
+			});
 		}
 	}
 
@@ -243,9 +267,16 @@ export class ChatRenderer {
 		const header = editBlock.createDiv({ cls: "ac-file-edit-header" });
 		const editIconEl = header.createSpan({ cls: "ac-file-edit-icon" });
 		setIcon(editIconEl, "file-pen-line");
+		const fullPath = message.fileEdit.filePath;
+		const parts = fullPath.split("/");
+		const shortPath =
+			parts.length > 2
+				? parts.slice(-2).join("/")
+				: fullPath;
 		header.createSpan({
 			cls: "ac-file-edit-path",
-			text: message.fileEdit.filePath,
+			text: shortPath,
+			attr: { title: fullPath },
 		});
 
 		// Diff display

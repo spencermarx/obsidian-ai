@@ -70,6 +70,14 @@ export class ChatView extends ItemView {
 	private pendingImages: PendingImage[] = [];
 	private dragEnterCount = 0;
 
+	// Throttled render state
+	private pendingContent: string | null = null;
+	private pendingTarget: HTMLElement | null = null;
+	private pendingType: "text" | "thinking" = "text";
+	private renderTimer: number | null = null;
+	private renderInFlight = false;
+	private static RENDER_INTERVAL_MS = 150;
+
 	constructor(
 		leaf: WorkspaceLeaf,
 		sessionManager: SessionManager,
@@ -123,6 +131,10 @@ export class ChatView extends ItemView {
 
 	onClose(): Promise<void> {
 		this.clearPendingImages();
+		if (this.renderTimer !== null) {
+			clearTimeout(this.renderTimer);
+			this.renderTimer = null;
+		}
 		if (this.sessionId) {
 			this.sessionManager.destroySession(this.sessionId);
 		}
@@ -653,6 +665,13 @@ export class ChatView extends ItemView {
 		this.isGenerating = true;
 		this.sendBtn.addClass("ac-hidden");
 		this.stopBtn.removeClass("ac-hidden");
+		// Cancel any pending render from the previous generation
+		if (this.renderTimer !== null) {
+			clearTimeout(this.renderTimer);
+			this.renderTimer = null;
+		}
+		this.pendingContent = null;
+		this.pendingTarget = null;
 		this.streamingThinkingEl = null;
 		this.streamingMessageEl = null;
 
@@ -666,7 +685,7 @@ export class ChatView extends ItemView {
 					imagePaths: imagePaths.length > 0 ? imagePaths : undefined,
 				}
 			);
-			this.setActivity("Starting…");
+			this.updateActivity("Starting…");
 		} catch (err) {
 			const msg =
 				err instanceof Error ? err.message : "Failed to send message";
@@ -675,24 +694,113 @@ export class ChatView extends ItemView {
 		}
 	}
 
-	private setActivity(text: string): void {
-		this.clearActivity();
+	// ── Stable activity bar ──
+
+	/** Create the activity bar if it doesn't exist or was detached. */
+	private ensureActivity(): void {
+		if (this.activityBar?.isConnected) return;
 		this.activityBar = this.messagesContainer.createDiv({
 			cls: "ac-activity-inline",
 		});
 		this.activityBar.createSpan({ cls: "ac-activity-spinner" });
 		this.activityText = this.activityBar.createSpan({
 			cls: "ac-activity-text",
-			text,
 		});
-		this.scrollToBottom();
+	}
+
+	/** Update the activity label text (create bar if needed, keep it last). */
+	private updateActivity(text: string): void {
+		this.ensureActivity();
+		if (this.activityText) this.activityText.textContent = text;
+		// Keep activity bar as last child
+		if (this.activityBar !== this.messagesContainer.lastElementChild) {
+			this.messagesContainer.appendChild(this.activityBar!);
+		}
 	}
 
 	private clearActivity(): void {
-		if (this.activityBar && this.activityBar.parentElement) {
+		if (this.activityBar?.isConnected) {
 			this.activityBar.remove();
 		}
+		this.activityBar = null;
+		this.activityText = null;
 	}
+
+	// ── Content insertion ──
+
+	/** Append a content element before the activity bar (so it stays last). */
+	private appendContent(el: HTMLElement): void {
+		if (this.activityBar?.parentElement === this.messagesContainer) {
+			this.messagesContainer.insertBefore(el, this.activityBar);
+		} else {
+			this.messagesContainer.appendChild(el);
+		}
+	}
+
+	// ── Throttled render pipeline ──
+
+	/**
+	 * Buffer content and schedule a throttled render.
+	 * At most one render per RENDER_INTERVAL_MS; if a render is already
+	 * in-flight, the new content will be picked up when it completes.
+	 */
+	private scheduleRender(
+		type: "text" | "thinking",
+		content: string,
+		target: HTMLElement
+	): void {
+		this.pendingContent = content;
+		this.pendingTarget = target;
+		this.pendingType = type;
+
+		if (this.renderInFlight || this.renderTimer !== null) return;
+
+		this.renderTimer = window.setTimeout(() => {
+			this.renderTimer = null;
+			void this.flushRender();
+		}, ChatView.RENDER_INTERVAL_MS);
+	}
+
+	/** Execute a single render pass for whatever content is pending. */
+	private async flushRender(): Promise<void> {
+		if (!this.pendingContent || !this.pendingTarget) return;
+
+		const content = this.pendingContent;
+		const target = this.pendingTarget;
+		const type = this.pendingType;
+		this.pendingContent = null;
+		this.pendingTarget = null;
+
+		this.renderInFlight = true;
+		try {
+			if (type === "text") {
+				await this.renderer.renderStreamingText(content, target);
+			} else {
+				await this.renderer.renderMarkdownInto(content, target);
+			}
+			this.scrollToBottom();
+		} finally {
+			this.renderInFlight = false;
+			// If new content arrived during render, schedule another pass
+			if (this.pendingContent) {
+				this.renderTimer = window.setTimeout(() => {
+					this.renderTimer = null;
+					void this.flushRender();
+				}, ChatView.RENDER_INTERVAL_MS);
+			}
+		}
+	}
+
+	/** Drain any buffered content immediately (on transitions / completion). */
+	private flushPendingRender(): void {
+		if (this.renderTimer !== null) {
+			clearTimeout(this.renderTimer);
+			this.renderTimer = null;
+		}
+		void this.flushRender();
+	}
+
+	// ── Message handlers ──
 
 	private handleMsgCount = 0;
 
@@ -718,103 +826,97 @@ export class ChatView extends ItemView {
 		}
 
 		if (message.role === "tool") {
-			this.setActivity(this.extractActivityText(message));
-
-			if (message.fileEdit) {
-				// File edits get their own block with Keep/Revert controls.
-				// The CLI already wrote the file — the renderer handles the
-				// button labels based on editApprovalMode.
-				this.streamingMessageEl = null;
-				const el = this.messagesContainer.createDiv();
-				this.renderer.renderFileEditBlock(message, el);
-			} else {
-				// Non-edit tools: render as compact chip inline
-				if (!this.streamingMessageEl) {
-					this.streamingMessageEl =
-						this.messagesContainer.createDiv({
-							cls: "ac-message ac-message-assistant",
-						});
-					this.streamingMessageEl.createDiv({
-						cls: "ac-message-body",
-					});
-				}
-				const body =
-					this.streamingMessageEl.querySelector(".ac-message-body");
-				if (body) {
-					this.renderer.renderToolChip(
-						message,
-						body as HTMLElement
-					);
-				}
-			}
-			this.scrollToBottom();
+			this.handleToolMessage(message);
 			return;
 		}
 
-		// Assistant thinking — collapsible reasoning block
 		if (message.role === "assistant" && message.isThinking) {
-			this.setActivity("Thinking…");
-			this.streamingMessageEl = null;
-
-			if (!this.streamingThinkingEl) {
-				this.streamingThinkingEl = this.messagesContainer.createDiv({
-					cls: "ac-message ac-message-thinking",
-				});
-				const details = this.streamingThinkingEl.createEl("details", {
-					cls: "ac-thinking",
-				});
-				details.setAttribute("open", "");
-				const summary = details.createEl("summary", {
-					cls: "ac-thinking-summary",
-				});
-				summary.createSpan({
-					cls: "ac-thinking-icon",
-					text: "Thinking",
-				});
-				summary.createSpan({ cls: "ac-thinking-label" });
-				details.createDiv({ cls: "ac-thinking-content" });
-			}
-
-			const contentEl =
-				this.streamingThinkingEl.querySelector<HTMLElement>(
-					".ac-thinking-content"
-				);
-			if (contentEl) {
-				void this.renderer.renderMarkdownInto(message.content, contentEl);
-			}
-			this.scrollToBottom();
+			this.handleThinkingMessage(message);
 			return;
 		}
 
-		// Assistant text — streaming accumulation
 		if (message.role === "assistant") {
-			this.setActivity("Responding…");
-			if (this.streamingThinkingEl) {
-				const details =
-					this.streamingThinkingEl.querySelector("details");
-				if (details) details.removeAttribute("open");
-				this.streamingThinkingEl = null;
-			}
-
-			if (!this.streamingMessageEl) {
-				this.streamingMessageEl = this.messagesContainer.createDiv({
-					cls: "ac-message ac-message-assistant",
-				});
-				this.streamingMessageEl.createDiv({ cls: "ac-message-body" });
-			}
-
-			void this.renderer.renderStreamingText(
-				message.content,
-				this.streamingMessageEl
-			);
-			this.scrollToBottom();
+			this.handleAssistantText(message);
 		}
 	}
 
+	private handleToolMessage(message: AgentMessage): void {
+		this.updateActivity(this.extractActivityText(message));
+
+		// Each tool call is its own persistent, collapsible element —
+		// never inside .ac-message-body, so text rendering can't destroy it.
+		if (message.fileEdit) {
+			this.streamingMessageEl = null;
+			const el = createDiv();
+			this.renderer.renderFileEditBlock(message, el);
+			this.appendContent(el);
+		} else {
+			const el = createDiv();
+			this.renderer.renderToolCall(message, el);
+			this.appendContent(el);
+		}
+		this.scrollToBottom();
+	}
+
+	private handleThinkingMessage(message: AgentMessage): void {
+		this.updateActivity("Thinking…");
+		this.streamingMessageEl = null;
+
+		if (!this.streamingThinkingEl) {
+			this.streamingThinkingEl = createDiv({
+				cls: "ac-message ac-message-thinking",
+			});
+			const details = this.streamingThinkingEl.createEl("details", {
+				cls: "ac-thinking",
+			});
+			details.setAttribute("open", "");
+			const summary = details.createEl("summary", {
+				cls: "ac-thinking-summary",
+			});
+			summary.createSpan({
+				cls: "ac-thinking-icon",
+				text: "Thinking",
+			});
+			summary.createSpan({ cls: "ac-thinking-label" });
+			details.createDiv({ cls: "ac-thinking-content" });
+			this.appendContent(this.streamingThinkingEl);
+		}
+
+		const contentEl =
+			this.streamingThinkingEl.querySelector<HTMLElement>(
+				".ac-thinking-content"
+			);
+		if (contentEl) {
+			this.scheduleRender("thinking", message.content, contentEl);
+		}
+	}
+
+	private handleAssistantText(message: AgentMessage): void {
+		// Flush any pending thinking render before transitioning
+		if (this.streamingThinkingEl) {
+			this.flushPendingRender();
+			const details =
+				this.streamingThinkingEl.querySelector("details");
+			if (details) details.removeAttribute("open");
+			this.streamingThinkingEl = null;
+		}
+
+		this.updateActivity("Responding…");
+
+		if (!this.streamingMessageEl) {
+			this.streamingMessageEl = createDiv({
+				cls: "ac-message ac-message-assistant",
+			});
+			this.streamingMessageEl.createDiv({ cls: "ac-message-body" });
+			this.appendContent(this.streamingMessageEl);
+		}
+
+		this.scheduleRender("text", message.content, this.streamingMessageEl);
+	}
+
 	private renderUserMessage(message: AgentMessage): void {
-		const el = this.messagesContainer.createDiv({
-			cls: "ac-message ac-message-user",
-		});
+		const el = createDiv({ cls: "ac-message ac-message-user" });
+		this.appendContent(el);
 
 		// Show image thumbnails if the message had images attached
 		if (message.imagePaths?.length) {
@@ -879,6 +981,8 @@ export class ChatView extends ItemView {
 
 	private onGenerationComplete(): void {
 		this.isGenerating = false;
+		// Flush any buffered content so final state renders
+		this.flushPendingRender();
 		this.clearActivity();
 		if (this.streamingThinkingEl) {
 			const details =
@@ -916,9 +1020,8 @@ export class ChatView extends ItemView {
 	}
 
 	private showError(error: string): void {
-		const el = this.messagesContainer.createDiv({
-			cls: "ac-message ac-message-error",
-		});
+		const el = createDiv({ cls: "ac-message ac-message-error" });
+		this.appendContent(el);
 		el.createDiv({ cls: "ac-message-header" }).createSpan({
 			cls: "ac-message-role",
 			text: "Error",
@@ -934,9 +1037,17 @@ export class ChatView extends ItemView {
 		this.renderWelcome();
 	}
 
+	/**
+	 * Scroll the messages container to the bottom.
+	 * Uses rAF to ensure scroll runs after browser layout.
+	 * With throttled rendering, this is called infrequently
+	 * (once per render tick + once per appended element).
+	 */
 	private scrollToBottom(): void {
-		this.messagesContainer.scrollTop =
-			this.messagesContainer.scrollHeight;
+		requestAnimationFrame(() => {
+			this.messagesContainer.scrollTop =
+				this.messagesContainer.scrollHeight;
+		});
 	}
 
 	private addCopyButton(messageEl: HTMLElement, text: string): void {
