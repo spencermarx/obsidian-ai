@@ -261,7 +261,11 @@ export class SessionManager {
 				session.messageQueue.flush();
 				session.process = null;
 
-				if (code !== 0 && code !== null) {
+				// 128+signal codes: 143=SIGTERM, 130=SIGINT — these are
+				// normal user-initiated stops, not errors.
+				const isSignalExit = code === 143 || code === 130;
+
+				if (code !== 0 && code !== null && !isSignalExit) {
 					const errMsg =
 						stderrBuffer.trim() ||
 						`Process exited with code ${code}`;
