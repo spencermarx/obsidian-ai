@@ -79,8 +79,8 @@ export class GenericCliAdapter implements AgentAdapter {
 		return [];
 	}
 
-	async getSlashCommands(): Promise<SlashCommand[]> {
-		return [];
+	getSlashCommands(): Promise<SlashCommand[]> {
+		return Promise.resolve([]);
 	}
 
 	formatSlashCommand(command: string, args?: string): string {
