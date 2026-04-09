@@ -8,6 +8,54 @@ import {
 } from "./types";
 import { whichBinary, execCommand } from "../utils/platform";
 import { formatContextForPrompt } from "../utils/vault-context";
+import {
+	discoverMarkdownCommands,
+	findPluginCommandDirs,
+	DiscoveryDir,
+} from "./slash-discovery";
+
+/**
+ * Built-in slash commands shipped with the Claude Code CLI. The CLI does not
+ * expose a programmatic `--list-commands` flag, so this baseline is
+ * maintained manually; discovered user/project/plugin commands are merged on
+ * top and override on name collisions.
+ */
+const CLAUDE_CODE_BUILTINS: SlashCommand[] = [
+	{ name: "/agents", description: "Manage custom sub-agents" },
+	{ name: "/bug", description: "Report a bug to Anthropic" },
+	{ name: "/clear", description: "Clear conversation history" },
+	{
+		name: "/compact",
+		description: "Compact conversation to save context",
+	},
+	{ name: "/config", description: "View or edit Claude Code settings" },
+	{ name: "/cost", description: "Show token usage and session cost" },
+	{ name: "/doctor", description: "Diagnose your Claude Code install" },
+	{ name: "/export", description: "Export the current conversation" },
+	{ name: "/help", description: "Show available commands and usage" },
+	{ name: "/hooks", description: "Manage lifecycle hooks" },
+	{ name: "/ide", description: "Connect to an IDE integration" },
+	{ name: "/init", description: "Initialize CLAUDE.md for this project" },
+	{ name: "/login", description: "Sign in to your Anthropic account" },
+	{ name: "/logout", description: "Sign out of your Anthropic account" },
+	{ name: "/mcp", description: "Manage MCP servers and connections" },
+	{ name: "/memory", description: "View or edit Claude's memory files" },
+	{ name: "/model", description: "Switch the active model" },
+	{ name: "/permissions", description: "Manage tool permissions" },
+	{
+		name: "/pr-comments",
+		description: "Review GitHub PR comments in-context",
+	},
+	{ name: "/release-notes", description: "Show Claude Code release notes" },
+	{ name: "/resume", description: "Resume a previous conversation" },
+	{ name: "/review", description: "Review recent code changes" },
+	{ name: "/status", description: "Show account and system status" },
+	{
+		name: "/terminal-setup",
+		description: "Configure terminal key bindings",
+	},
+	{ name: "/vim", description: "Toggle vim-style input mode" },
+];
 
 /**
  * Adapter for Claude Code CLI.
@@ -469,37 +517,44 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		return messages;
 	}
 
-	getSlashCommands(): SlashCommand[] {
-		return [
-			{
-				name: "/help",
-				description: "Show available commands and usage",
-			},
-			{
-				name: "/clear",
-				description: "Clear conversation history",
-			},
-			{
-				name: "/compact",
-				description: "Compact conversation to save context",
-			},
-			{
-				name: "/commit",
-				description: "Commit staged changes with a message",
-			},
-			{
-				name: "/review-pr",
-				description: "Review a pull request",
-			},
-			{
-				name: "/create-pr",
-				description: "Create a new pull request",
-			},
-			{
-				name: "/init",
-				description: "Initialize project configuration",
-			},
-		];
+	getBuiltinSlashCommands(): SlashCommand[] {
+		return CLAUDE_CODE_BUILTINS.map((c) => ({ ...c, source: "builtin" }));
+	}
+
+	async getSlashCommands(cwd?: string): Promise<SlashCommand[]> {
+		// Precedence (low → high): builtin < plugin < user < project.
+		// Discovery sources override built-ins on name collision so what the
+		// user actually has installed wins.
+		const builtins = this.getBuiltinSlashCommands();
+
+		const dirs: DiscoveryDir[] = [];
+
+		// Plugin commands: ~/.claude/plugins/<plugin>/commands/
+		const pluginDirs = await findPluginCommandDirs("~/.claude/plugins");
+		for (const d of pluginDirs) {
+			dirs.push({ path: d, source: "plugin" });
+		}
+
+		// User commands
+		dirs.push({ path: "~/.claude/commands", source: "user" });
+
+		// Project commands (only when a cwd is available)
+		if (cwd) {
+			dirs.push({
+				path: `${cwd}/.claude/commands`,
+				source: "project",
+			});
+		}
+
+		const discovered = await discoverMarkdownCommands(dirs);
+
+		const merged = new Map<string, SlashCommand>();
+		for (const cmd of builtins) merged.set(cmd.name, cmd);
+		for (const cmd of discovered) merged.set(cmd.name, cmd);
+
+		return Array.from(merged.values()).sort((a, b) =>
+			a.name.localeCompare(b.name)
+		);
 	}
 
 	formatSlashCommand(command: string, args?: string): string {

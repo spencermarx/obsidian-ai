@@ -46,6 +46,8 @@ export interface SpawnArgs {
 export interface SlashCommand {
 	name: string;
 	description: string;
+	/** Where this command was discovered from. */
+	source?: "builtin" | "user" | "project" | "plugin";
 }
 
 /**
@@ -84,8 +86,23 @@ export interface AgentAdapter {
 	 */
 	parseOutputStream(stdout: Readable): AsyncIterable<AgentMessage>;
 
-	/** Get the list of slash commands supported by this agent. */
-	getSlashCommands(): SlashCommand[];
+	/**
+	 * Get the list of slash commands supported by this agent.
+	 *
+	 * May perform async discovery (filesystem scanning) to pick up
+	 * user-defined and project-level commands. The returned list should
+	 * merge built-in commands with discovered ones.
+	 *
+	 * @param cwd - Working directory used for project-level command discovery.
+	 */
+	getSlashCommands(cwd?: string): Promise<SlashCommand[]>;
+
+	/**
+	 * Synchronous fallback returning just the hardcoded built-in commands.
+	 * Used by the UI to render an immediate baseline before async discovery
+	 * completes.
+	 */
+	getBuiltinSlashCommands(): SlashCommand[];
 
 	/** Format a slash command for sending to the CLI. */
 	formatSlashCommand(command: string, args?: string): string;

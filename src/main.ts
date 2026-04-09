@@ -277,12 +277,12 @@ export default class AgenticCopilotPlugin extends Plugin {
 		this.addCommand({
 			id: "run-slash",
 			name: "Run agent slash",
-			callback: () => {
+			callback: async () => {
 				if (!this.activeAdapter) {
 					new Notice("No agent configured");
 					return;
 				}
-				const commands = this.activeAdapter.getSlashCommands();
+				const commands = await this.activeAdapter.getSlashCommands();
 				if (commands.length === 0) {
 					new Notice("No slash commands available for this agent");
 					return;

@@ -8,6 +8,29 @@ import {
 } from "./types";
 import { whichBinary, execCommand } from "../utils/platform";
 import { formatContextForPrompt } from "../utils/vault-context";
+import {
+	discoverMarkdownCommands,
+	DiscoveryDir,
+} from "./slash-discovery";
+
+/**
+ * Built-in slash commands shipped with the Opencode CLI. Maintained
+ * manually; discovered user/project commands merge on top.
+ */
+const OPENCODE_BUILTINS: SlashCommand[] = [
+	{ name: "/compact", description: "Compact conversation context" },
+	{ name: "/editor", description: "Open the active message in $EDITOR" },
+	{ name: "/exit", description: "Exit the current session" },
+	{ name: "/help", description: "Show available commands" },
+	{ name: "/init", description: "Initialize project configuration" },
+	{ name: "/model", description: "Switch the active model" },
+	{ name: "/new", description: "Start a new session" },
+	{ name: "/provider", description: "Switch the active provider" },
+	{ name: "/redo", description: "Redo the last undone action" },
+	{ name: "/session", description: "Manage sessions" },
+	{ name: "/share", description: "Share the current session" },
+	{ name: "/undo", description: "Undo the last action" },
+];
 
 /**
  * Adapter for Opencode CLI.
@@ -122,16 +145,32 @@ export class OpencodeAdapter implements AgentAdapter {
 		}
 	}
 
-	getSlashCommands(): SlashCommand[] {
-		return [
-			{
-				name: "/compact",
-				description: "Compact conversation context",
-			},
-			{ name: "/model", description: "Switch the active model" },
-			{ name: "/provider", description: "Switch the active provider" },
-			{ name: "/help", description: "Show available commands" },
+	getBuiltinSlashCommands(): SlashCommand[] {
+		return OPENCODE_BUILTINS.map((c) => ({ ...c, source: "builtin" }));
+	}
+
+	async getSlashCommands(cwd?: string): Promise<SlashCommand[]> {
+		const builtins = this.getBuiltinSlashCommands();
+
+		const dirs: DiscoveryDir[] = [
+			{ path: "~/.config/opencode/command", source: "user" },
 		];
+		if (cwd) {
+			dirs.push({
+				path: `${cwd}/.opencode/command`,
+				source: "project",
+			});
+		}
+
+		const discovered = await discoverMarkdownCommands(dirs);
+
+		const merged = new Map<string, SlashCommand>();
+		for (const cmd of builtins) merged.set(cmd.name, cmd);
+		for (const cmd of discovered) merged.set(cmd.name, cmd);
+
+		return Array.from(merged.values()).sort((a, b) =>
+			a.name.localeCompare(b.name)
+		);
 	}
 
 	formatSlashCommand(command: string, args?: string): string {

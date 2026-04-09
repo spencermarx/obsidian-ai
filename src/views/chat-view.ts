@@ -103,7 +103,10 @@ export class ChatView extends ItemView {
 		this.onRevertEdit = onRevertEdit;
 		this.onSaveSettings = onSaveSettings;
 		this.renderer = new ChatRenderer(this, "", this.settings);
-		this.slashCommands = adapter.getSlashCommands();
+		// Seed with the sync built-in baseline so the welcome panel has
+		// something to render immediately; async discovery upgrades this
+		// list from onOpen() / setAdapter() via refreshSlashCommands().
+		this.slashCommands = adapter.getBuiltinSlashCommands();
 	}
 
 	getViewType(): string {
@@ -126,6 +129,10 @@ export class ChatView extends ItemView {
 		this.buildUI(container);
 		this.setupSession();
 		this.setupEventListeners();
+		// Kick off async slash command discovery — the welcome panel is
+		// already showing the built-in baseline, this upgrades it with
+		// user/project/plugin commands as soon as the scan completes.
+		void this.refreshSlashCommands();
 		return Promise.resolve();
 	}
 
@@ -144,7 +151,7 @@ export class ChatView extends ItemView {
 	/** Update the adapter (when user switches agents). */
 	setAdapter(adapter: AgentAdapter): void {
 		this.adapter = adapter;
-		this.slashCommands = adapter.getSlashCommands();
+		this.slashCommands = adapter.getBuiltinSlashCommands();
 		if (this.sessionId) {
 			this.sessionManager.destroySession(this.sessionId);
 		}
@@ -152,6 +159,63 @@ export class ChatView extends ItemView {
 		this.clearMessages();
 		this.updateStatus("idle");
 		(this.leaf as unknown as { updateHeader?: () => void }).updateHeader?.();
+		void this.refreshSlashCommands();
+	}
+
+	/**
+	 * Compute the cwd passed to the agent (and to slash-command discovery).
+	 * Mirrors the logic previously inlined in `sendMessage` — vault root by
+	 * default, active file's directory when the setting is "file".
+	 */
+	private computeCwd(): string {
+		const context = getVaultContext(this.app);
+		let cwd = context.vaultPath;
+		if (
+			this.settings.workingDirectory === "file" &&
+			context.activeFilePath
+		) {
+			const parts = context.activeFilePath.split("/");
+			parts.pop();
+			const fileDir = parts.join("/");
+			if (fileDir) cwd = cwd + "/" + fileDir;
+		}
+		return cwd;
+	}
+
+	/**
+	 * Discover slash commands from the active adapter (built-ins +
+	 * user/project/plugin markdown files) and refresh the welcome panel if
+	 * it is currently visible. Failures are logged but don't disturb the
+	 * existing list.
+	 */
+	private async refreshSlashCommands(): Promise<void> {
+		try {
+			const cwd = this.computeCwd();
+			const commands = await this.adapter.getSlashCommands(cwd);
+			// Only accept a non-empty list — if discovery returned nothing
+			// (e.g. generic adapter) keep the seeded built-ins in place.
+			if (commands.length === 0) return;
+			this.slashCommands = commands;
+			if (this.isWelcomeVisible()) {
+				this.messagesContainer.empty();
+				this.renderWelcome();
+			}
+		} catch (err) {
+			console.warn(
+				"[agentic-copilot] slash command discovery failed",
+				err
+			);
+		}
+	}
+
+	/** True when the welcome panel is the only thing in the messages area. */
+	private isWelcomeVisible(): boolean {
+		const first = this.messagesContainer.firstElementChild;
+		return (
+			this.messagesContainer.childElementCount === 1 &&
+			first !== null &&
+			first.classList.contains("ac-welcome")
+		);
 	}
 
 	private buildUI(container: HTMLElement): void {
@@ -649,18 +713,8 @@ export class ChatView extends ItemView {
 			delete context.selection;
 		}
 
-		// Set working directory
-		if (
-			this.settings.workingDirectory === "file" &&
-			context.activeFilePath
-		) {
-			const parts = context.activeFilePath.split("/");
-			parts.pop();
-			const fileDir = parts.join("/");
-			if (fileDir) {
-				context.vaultPath = context.vaultPath + "/" + fileDir;
-			}
-		}
+		// Set working directory (shared with slash-command discovery).
+		context.vaultPath = this.computeCwd();
 
 		this.isGenerating = true;
 		this.sendBtn.addClass("ac-hidden");

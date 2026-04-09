@@ -74,8 +74,12 @@ export class GenericCliAdapter implements AgentAdapter {
 		}
 	}
 
-	getSlashCommands(): SlashCommand[] {
+	getBuiltinSlashCommands(): SlashCommand[] {
 		// Generic adapter has no known slash commands
+		return [];
+	}
+
+	async getSlashCommands(): Promise<SlashCommand[]> {
 		return [];
 	}
 
