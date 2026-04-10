@@ -21,6 +21,8 @@ export interface AgentMessage {
 	};
 	/** CLI session ID — set on system init events from stream-json. */
 	cliSessionId?: string;
+	/** Fully resolved slash commands reported by the CLI on session init. */
+	slashCommands?: SlashCommand[];
 	/** Absolute paths to images attached to a user message. */
 	imagePaths?: string[];
 	timestamp: number;
@@ -46,8 +48,16 @@ export interface SpawnArgs {
 export interface SlashCommand {
 	name: string;
 	description: string;
-	/** Where this command was discovered from. */
-	source?: "builtin" | "user" | "project" | "plugin";
+}
+
+/** Result of executing a slash command at the adapter level. */
+export interface SlashCommandResult {
+	/** Whether the adapter handled this command. */
+	handled: boolean;
+	/** If handled, an optional prompt to send to the CLI instead. */
+	prompt?: string;
+	/** If handled, an optional UI action to perform (no CLI invocation). */
+	action?: "clear" | "help";
 }
 
 /**
@@ -87,15 +97,18 @@ export interface AgentAdapter {
 	parseOutputStream(stdout: Readable): AsyncIterable<AgentMessage>;
 
 	/**
-	 * Get the list of slash commands supported by this agent.
-	 *
-	 * May perform async discovery (filesystem scanning) to pick up
-	 * user-defined and project-level commands. The returned list should
-	 * merge built-in commands with discovered ones.
-	 *
-	 * @param cwd - Working directory used for project-level command discovery.
+	 * Get the hardcoded baseline list of slash commands.
+	 * Same as `getBuiltinSlashCommands` but async for interface consistency.
 	 */
-	getSlashCommands(cwd?: string): Promise<SlashCommand[]>;
+	getSlashCommands(): Promise<SlashCommand[]>;
+
+	/**
+	 * Spawn a short-lived probe process to discover the full set of
+	 * slash commands available for a given working directory. Returns
+	 * enriched commands with descriptions where available, or `null`
+	 * if the adapter doesn't support probing.
+	 */
+	discoverSlashCommands(cwd: string): Promise<SlashCommand[] | null>;
 
 	/**
 	 * Synchronous fallback returning just the hardcoded built-in commands.
@@ -104,6 +117,13 @@ export interface AgentAdapter {
 	 */
 	getBuiltinSlashCommands(): SlashCommand[];
 
-	/** Format a slash command for sending to the CLI. */
-	formatSlashCommand(command: string, args?: string): string;
+	/**
+	 * Execute a built-in slash command. Returns whether the command was
+	 * handled and, if so, either a translated prompt to send to the CLI
+	 * or a UI action to perform locally.
+	 */
+	executeSlashCommand(
+		command: string,
+		args: string
+	): Promise<SlashCommandResult>;
 }

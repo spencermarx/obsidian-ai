@@ -282,7 +282,16 @@ export default class AgenticCopilotPlugin extends Plugin {
 					new Notice("No agent configured");
 					return;
 				}
-				const commands = await this.activeAdapter.getSlashCommands();
+				const vaultAdapter = this.app.vault.adapter as {
+					getBasePath?: () => string;
+				};
+				const cwd =
+					typeof vaultAdapter.getBasePath === "function"
+						? vaultAdapter.getBasePath()
+						: "";
+				const commands =
+					(await this.activeAdapter.discoverSlashCommands(cwd)) ??
+					(await this.activeAdapter.getSlashCommands());
 				if (commands.length === 0) {
 					new Notice("No slash commands available for this agent");
 					return;

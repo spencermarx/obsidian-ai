@@ -3,6 +3,7 @@ import {
 	AgentAdapter,
 	AgentMessage,
 	SlashCommand,
+	SlashCommandResult,
 	SpawnArgs,
 	VaultContext,
 } from "./types";
@@ -83,7 +84,14 @@ export class GenericCliAdapter implements AgentAdapter {
 		return Promise.resolve([]);
 	}
 
-	formatSlashCommand(command: string, args?: string): string {
-		return args ? `${command} ${args}` : command;
+	discoverSlashCommands(_cwd: string): Promise<SlashCommand[] | null> {
+		return Promise.resolve(null);
+	}
+
+	async executeSlashCommand(
+		_command: string,
+		_args: string
+	): Promise<SlashCommandResult> {
+		return { handled: false };
 	}
 }

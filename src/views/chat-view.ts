@@ -1,6 +1,10 @@
 import { ItemView, WorkspaceLeaf, Notice, setIcon } from "obsidian";
 import { CHAT_VIEW_TYPE } from "../constants";
-import { AgentAdapter, AgentMessage, SlashCommand } from "../adapters/types";
+import {
+	AgentAdapter,
+	AgentMessage,
+	SlashCommand,
+} from "../adapters/types";
 import { SessionManager, SessionStatus } from "../session/session-manager";
 import { ChatRenderer } from "./chat-renderer";
 import { getVaultContext } from "../utils/vault-context";
@@ -67,6 +71,7 @@ export class ChatView extends ItemView {
 	private streamingThinkingEl: HTMLElement | null = null;
 	private streamingMessageEl: HTMLElement | null = null;
 	private slashCommands: SlashCommand[] = [];
+	private slashCommandsLoading = true;
 	private pendingImages: PendingImage[] = [];
 	private dragEnterCount = 0;
 
@@ -129,10 +134,7 @@ export class ChatView extends ItemView {
 		this.buildUI(container);
 		this.setupSession();
 		this.setupEventListeners();
-		// Kick off async slash command discovery — the welcome panel is
-		// already showing the built-in baseline, this upgrades it with
-		// user/project/plugin commands as soon as the scan completes.
-		void this.refreshSlashCommands();
+		void this.probeSlashCommands();
 		return Promise.resolve();
 	}
 
@@ -159,7 +161,50 @@ export class ChatView extends ItemView {
 		this.clearMessages();
 		this.updateStatus("idle");
 		(this.leaf as unknown as { updateHeader?: () => void }).updateHeader?.();
-		void this.refreshSlashCommands();
+		void this.probeSlashCommands();
+	}
+
+	/**
+	 * Ask the adapter to discover slash commands for the current cwd.
+	 * The adapter returns fully enriched commands (names + descriptions).
+	 * Updates the welcome panel and autocomplete once the probe completes.
+	 */
+	private async probeSlashCommands(): Promise<void> {
+		this.slashCommandsLoading = true;
+		try {
+			const cwd = this.computeCwd();
+			const commands =
+				await this.adapter.discoverSlashCommands(cwd);
+			if (commands && commands.length > 0) {
+				this.slashCommands = commands;
+			}
+		} catch (err) {
+			console.warn(
+				"[agentic-copilot] slash command probe failed",
+				err
+			);
+		} finally {
+			this.slashCommandsLoading = false;
+			this.rerenderWelcomeIfVisible();
+			// Dismiss the loading popup if the user typed `/` while probing
+			if (
+				!this.slashPopup.hasClass("ac-hidden") &&
+				this.slashPopup.querySelector(".ac-skeleton")
+			) {
+				this.handleAutocomplete();
+			}
+		}
+	}
+
+	private rerenderWelcomeIfVisible(): void {
+		const first = this.messagesContainer.firstElementChild;
+		if (
+			this.messagesContainer.childElementCount === 1 &&
+			first?.classList.contains("ac-welcome")
+		) {
+			this.messagesContainer.empty();
+			this.renderWelcome();
+		}
 	}
 
 	/**
@@ -180,42 +225,6 @@ export class ChatView extends ItemView {
 			if (fileDir) cwd = cwd + "/" + fileDir;
 		}
 		return cwd;
-	}
-
-	/**
-	 * Discover slash commands from the active adapter (built-ins +
-	 * user/project/plugin markdown files) and refresh the welcome panel if
-	 * it is currently visible. Failures are logged but don't disturb the
-	 * existing list.
-	 */
-	private async refreshSlashCommands(): Promise<void> {
-		try {
-			const cwd = this.computeCwd();
-			const commands = await this.adapter.getSlashCommands(cwd);
-			// Only accept a non-empty list — if discovery returned nothing
-			// (e.g. generic adapter) keep the seeded built-ins in place.
-			if (commands.length === 0) return;
-			this.slashCommands = commands;
-			if (this.isWelcomeVisible()) {
-				this.messagesContainer.empty();
-				this.renderWelcome();
-			}
-		} catch (err) {
-			console.warn(
-				"[agentic-copilot] slash command discovery failed",
-				err
-			);
-		}
-	}
-
-	/** True when the welcome panel is the only thing in the messages area. */
-	private isWelcomeVisible(): boolean {
-		const first = this.messagesContainer.firstElementChild;
-		return (
-			this.messagesContainer.childElementCount === 1 &&
-			first !== null &&
-			first.classList.contains("ac-welcome")
-		);
 	}
 
 	private buildUI(container: HTMLElement): void {
@@ -353,27 +362,39 @@ export class ChatView extends ItemView {
 			text: `Connected to ${this.adapter.displayName}. Ask anything about your vault.`,
 		});
 
-		if (this.slashCommands.length > 0) {
-			const cmdSection = welcome.createDiv({
-				cls: "ac-welcome-commands",
-			});
-			cmdSection.createEl("p", {
-				cls: "ac-welcome-commands-label",
-				text: "Commands",
-			});
-			const cmdList = cmdSection.createDiv({
-				cls: "ac-welcome-cmd-list",
-			});
+		const cmdSection = welcome.createDiv({
+			cls: "ac-welcome-commands",
+		});
+		cmdSection.createEl("p", {
+			cls: "ac-welcome-commands-label",
+			text: "Commands",
+		});
+		const cmdList = cmdSection.createDiv({
+			cls: "ac-welcome-cmd-list",
+		});
+
+		if (this.slashCommandsLoading && this.slashCommands.length === 0) {
+			// Skeleton loading state — show pulsing placeholders
+			for (let i = 0; i < 6; i++) {
+				const item = cmdList.createDiv({
+					cls: "ac-welcome-cmd ac-skeleton",
+				});
+				item.createDiv({ cls: "ac-skeleton-name" });
+				item.createDiv({ cls: "ac-skeleton-desc" });
+			}
+		} else {
 			for (const cmd of this.slashCommands) {
 				const item = cmdList.createDiv({ cls: "ac-welcome-cmd" });
 				item.createSpan({
 					cls: "ac-welcome-cmd-name",
 					text: cmd.name,
 				});
-				item.createSpan({
-					cls: "ac-welcome-cmd-desc",
-					text: cmd.description,
-				});
+				if (cmd.description) {
+					item.createSpan({
+						cls: "ac-welcome-cmd-desc",
+						text: cmd.description,
+					});
+				}
 				item.addEventListener("click", () => {
 					this.inputEl.value = cmd.name + " ";
 					this.inputEl.focus();
@@ -687,7 +708,7 @@ export class ChatView extends ItemView {
 	}
 
 	private async sendMessage(): Promise<void> {
-		const text = this.inputEl.value.trim();
+		let text = this.inputEl.value.trim();
 		if ((!text && this.pendingImages.length === 0) || this.isGenerating) return;
 		if (!this.sessionId) return;
 
@@ -700,6 +721,19 @@ export class ChatView extends ItemView {
 		this.updateSendButtonState();
 		this.hideAllPopups();
 		this.resetPendingImagesUI();
+
+		// ── Slash command interception ──
+		// The CLI only processes slash commands in interactive/TTY mode.
+		// Since we use one-shot `-p` mode, we intercept them here and
+		// either handle locally or translate to an equivalent prompt.
+		if (text.startsWith("/")) {
+			const resolved = await this.resolveSlashCommand(text);
+			if (resolved === null) {
+				// Fully handled (e.g. /clear, /help) — nothing to send.
+				return;
+			}
+			text = resolved;
+		}
 
 		// Gather vault context
 		const context = getVaultContext(this.app);
@@ -746,6 +780,43 @@ export class ChatView extends ItemView {
 			this.showError(msg);
 			this.onGenerationComplete();
 		}
+	}
+
+	/**
+	 * Resolve a slash command to either a replacement prompt string or
+	 * `null` if the command was fully handled (UI action, no CLI call).
+	 *
+	 * The adapter's `executeSlashCommand` handles plugin-level actions
+	 * (/clear, /help) and built-in translations (/compact →
+	 * summarization prompt). Unrecognized commands pass through as-is.
+	 */
+	private async resolveSlashCommand(text: string): Promise<string | null> {
+		const spaceIdx = text.indexOf(" ");
+		const cmdName = spaceIdx === -1 ? text : text.slice(0, spaceIdx);
+		const cmdArgs = spaceIdx === -1 ? "" : text.slice(spaceIdx + 1).trim();
+
+		const result = await this.adapter.executeSlashCommand(
+			cmdName,
+			cmdArgs
+		);
+		if (result.action === "clear") {
+			this.clearMessages();
+			return null;
+		}
+		if (result.action === "help") {
+			this.clearMessages(); // clearMessages re-renders welcome
+			return null;
+		}
+		if (result.handled && result.prompt) {
+			return result.prompt;
+		}
+		if (result.handled) {
+			return null;
+		}
+
+		// Unrecognized or unhandled — send as-is (the CLI's Skill tool
+		// will resolve it if it's a valid skill name).
+		return text;
 	}
 
 	// ── Stable activity bar ──
@@ -870,6 +941,22 @@ export class ChatView extends ItemView {
 		if (message.role === "system") {
 			if (message.cliSessionId) {
 				this.updateSessionIdDisplay(message.cliSessionId);
+			}
+			// The adapter emits slash commands with baseline descriptions.
+			// Merge rather than overwrite so enriched descriptions from
+			// the probe are preserved.
+			if (message.slashCommands && message.slashCommands.length > 0) {
+				const existing = new Map<string, string>();
+				for (const cmd of this.slashCommands) {
+					if (cmd.description) existing.set(cmd.name, cmd.description);
+				}
+				for (const cmd of message.slashCommands) {
+					if (!cmd.description) {
+						cmd.description = existing.get(cmd.name) || "";
+					}
+				}
+				this.slashCommands = message.slashCommands;
+				this.slashCommandsLoading = false;
 			}
 			return;
 		}
@@ -1271,6 +1358,13 @@ export class ChatView extends ItemView {
 
 		// Check for / commands (only at start)
 		if (text.startsWith("/") && !text.includes(" ")) {
+			if (
+				this.slashCommandsLoading &&
+				this.slashCommands.length === 0
+			) {
+				this.showSlashPopupLoading();
+				return;
+			}
 			const filter = text.toLowerCase();
 			const matches = this.slashCommands.filter((cmd) =>
 				cmd.name.toLowerCase().startsWith(filter)
@@ -1411,10 +1505,12 @@ export class ChatView extends ItemView {
 				cls: "ac-popup-item",
 			});
 			item.createSpan({ cls: "ac-popup-item-text", text: cmd.name });
-			item.createSpan({
-				cls: "ac-popup-item-desc",
-				text: cmd.description,
-			});
+			if (cmd.description) {
+				item.createSpan({
+					cls: "ac-popup-item-desc",
+					text: cmd.description,
+				});
+			}
 
 			item.addEventListener("click", () => {
 				this.inputEl.value = cmd.name + " ";
@@ -1424,6 +1520,20 @@ export class ChatView extends ItemView {
 		}
 		const first = this.slashPopup.querySelector(".ac-popup-item");
 		if (first) first.addClass("ac-popup-item-active");
+	}
+
+	private showSlashPopupLoading(): void {
+		this.hideAllPopups();
+		this.slashPopup.empty();
+		this.slashPopup.removeClass("ac-hidden");
+
+		for (let i = 0; i < 4; i++) {
+			const item = this.slashPopup.createDiv({
+				cls: "ac-popup-item ac-skeleton",
+			});
+			item.createDiv({ cls: "ac-skeleton-name" });
+			item.createDiv({ cls: "ac-skeleton-desc" });
+		}
 	}
 
 	private hideAllPopups(): void {
