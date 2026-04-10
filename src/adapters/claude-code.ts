@@ -1,18 +1,18 @@
 import { Readable } from "stream";
+import { spawn as nodeSpawn } from "child_process";
+import { promises as fsPromises } from "fs";
+import * as nodePath from "path";
+import * as os from "os";
 import {
 	AgentAdapter,
 	AgentMessage,
 	SlashCommand,
+	SlashCommandResult,
 	SpawnArgs,
 	VaultContext,
 } from "./types";
-import { whichBinary, execCommand } from "../utils/platform";
+import { whichBinary, execCommand, getExpandedPath } from "../utils/platform";
 import { formatContextForPrompt } from "../utils/vault-context";
-import {
-	discoverMarkdownCommands,
-	findPluginCommandDirs,
-	DiscoveryDir,
-} from "./slash-discovery";
 
 /**
  * Built-in slash commands shipped with the Claude Code CLI. The CLI does not
@@ -159,8 +159,10 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		let chunkCount = 0;
 		let lineCount = 0;
 		let yieldCount = 0;
-		// Reset block state for each new invocation
+		// Reset all streaming state for each new invocation
 		this.currentBlockType = null;
+		this.currentToolName = null;
+		this.currentToolInput = "";
 
 		for await (const chunk of stdout) {
 			chunkCount++;
@@ -420,14 +422,35 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		}
 
 		// ---- System init event — contains the real CLI session_id
+		// and the full list of available slash commands.
 		if (type === "system") {
 			const sessionId = event.session_id as string | undefined;
-			if (sessionId) {
+			const rawNames = event.slash_commands as string[] | undefined;
+
+			// Build enriched SlashCommand objects with baseline descriptions.
+			let resolved: SlashCommand[] | undefined;
+			if (rawNames) {
+				const builtinMap = new Map<string, string>();
+				for (const cmd of CLAUDE_CODE_BUILTINS) {
+					builtinMap.set(cmd.name, cmd.description);
+				}
+				resolved = rawNames.map((raw) => {
+					const name = raw.startsWith("/") ? raw : `/${raw}`;
+					return {
+						name,
+						description: builtinMap.get(name) || "",
+					};
+				});
+				resolved.sort((a, b) => a.name.localeCompare(b.name));
+			}
+
+			if (sessionId || resolved) {
 				return [
 					{
 						role: "system",
 						content: "",
 						cliSessionId: sessionId,
+						slashCommands: resolved,
 						timestamp: Date.now(),
 					},
 				];
@@ -518,46 +541,317 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 	}
 
 	getBuiltinSlashCommands(): SlashCommand[] {
-		return CLAUDE_CODE_BUILTINS.map((c) => ({ ...c, source: "builtin" }));
+		return [...CLAUDE_CODE_BUILTINS];
 	}
 
-	async getSlashCommands(cwd?: string): Promise<SlashCommand[]> {
-		// Precedence (low → high): builtin < plugin < user < project.
-		// Discovery sources override built-ins on name collision so what the
-		// user actually has installed wins.
-		const builtins = this.getBuiltinSlashCommands();
+	async getSlashCommands(): Promise<SlashCommand[]> {
+		return this.getBuiltinSlashCommands();
+	}
 
-		const dirs: DiscoveryDir[] = [];
+	async discoverSlashCommands(
+		cwd: string
+	): Promise<SlashCommand[] | null> {
+		const initEvent = await this.probeInitEvent(cwd);
+		if (!initEvent) return null;
 
-		// Plugin commands: ~/.claude/plugins/<plugin>/commands/
-		const pluginDirs = await findPluginCommandDirs("~/.claude/plugins");
-		for (const d of pluginDirs) {
-			dirs.push({ path: d, source: "plugin" });
+		const names = (initEvent.slash_commands as string[] | undefined) ?? [];
+		const plugins =
+			(initEvent.plugins as
+				| Array<{ name: string; path: string }>
+				| undefined) ?? [];
+
+		// Build description lookup from the hardcoded baseline.
+		const builtinMap = new Map<string, string>();
+		for (const cmd of CLAUDE_CODE_BUILTINS) {
+			builtinMap.set(cmd.name, cmd.description);
 		}
 
-		// User commands
-		dirs.push({ path: "~/.claude/commands", source: "user" });
+		// Build commands with baseline descriptions.
+		const commands: SlashCommand[] = names.map((raw) => {
+			const name = raw.startsWith("/") ? raw : `/${raw}`;
+			return { name, description: builtinMap.get(name) || "" };
+		});
+		commands.sort((a, b) => a.name.localeCompare(b.name));
 
-		// Project commands (only when a cwd is available)
-		if (cwd) {
-			dirs.push({
-				path: `${cwd}/.claude/commands`,
-				source: "project",
+		// Enrich descriptions from markdown source files.
+		await this.enrichDescriptions(commands, cwd, plugins);
+
+		return commands;
+	}
+
+	/**
+	 * Spawn a throwaway process to capture the CLI's system init event.
+	 * Killed as soon as the event is received.
+	 */
+	private async probeInitEvent(
+		cwd: string
+	): Promise<Record<string, unknown> | null> {
+		const binary = await whichBinary(this.binaryName);
+		if (!binary) return null;
+
+		return new Promise((resolve) => {
+			let done = false;
+			const finish = (
+				value: Record<string, unknown> | null
+			): void => {
+				if (done) return;
+				done = true;
+				clearTimeout(timeout);
+				resolve(value);
+			};
+
+			let proc: ReturnType<typeof nodeSpawn>;
+			try {
+				proc = nodeSpawn(
+					binary,
+					[
+						"-p",
+						"respond with only the word PONG",
+						"--output-format",
+						"stream-json",
+						"--verbose",
+						"--no-session-persistence",
+						"--max-budget-usd",
+						"0.01",
+					],
+					{
+						cwd,
+						env: {
+							...process.env,
+							PATH: getExpandedPath(),
+						},
+						stdio: ["pipe", "pipe", "ignore"],
+					}
+				);
+			} catch {
+				resolve(null);
+				return;
+			}
+
+			const timeout = setTimeout(() => {
+				proc.kill();
+				finish(null);
+			}, 10_000);
+
+			if (proc.stdin) proc.stdin.end();
+
+			let buffer = "";
+			proc.stdout?.on("data", (chunk: Buffer) => {
+				buffer += chunk.toString();
+				const lines = buffer.split("\n");
+				buffer = lines.pop() || "";
+
+				for (const line of lines) {
+					const trimmed = line.trim();
+					if (!trimmed) continue;
+					try {
+						const event = JSON.parse(trimmed);
+						if (
+							event.type === "system" &&
+							Array.isArray(event.slash_commands)
+						) {
+							proc.kill();
+							finish(event);
+							return;
+						}
+					} catch {
+						// Not JSON yet.
+					}
+				}
 			});
+
+			proc.on("error", () => finish(null));
+			proc.on("close", () => finish(null));
+		});
+	}
+
+	/**
+	 * Read frontmatter `description:` from markdown command/skill files
+	 * for commands that don't yet have a description.
+	 *
+	 * Checks (in order): user commands, user skills, ancestor project
+	 * commands/skills, and plugin skills.
+	 */
+	private async enrichDescriptions(
+		commands: SlashCommand[],
+		cwd: string,
+		plugins: Array<{ name: string; path: string }>
+	): Promise<void> {
+		const needsDesc = commands.filter((c) => !c.description);
+		if (needsDesc.length === 0) return;
+
+		const home = os.homedir();
+
+		// Collect ancestor directories from cwd up (excluding home).
+		const ancestors: string[] = [];
+		let dir = nodePath.resolve(cwd);
+		while (dir !== home && dir !== nodePath.dirname(dir)) {
+			ancestors.push(dir);
+			dir = nodePath.dirname(dir);
 		}
 
-		const discovered = await discoverMarkdownCommands(dirs);
+		// Search roots: home first (lowest priority), then ancestors
+		// from most distant to closest (closest wins).
+		const searchRoots = [home, ...ancestors.reverse()];
 
-		const merged = new Map<string, SlashCommand>();
-		for (const cmd of builtins) merged.set(cmd.name, cmd);
-		for (const cmd of discovered) merged.set(cmd.name, cmd);
+		// Plugin lookup: plugin-name → install path.
+		const pluginPaths = new Map<string, string>();
+		for (const p of plugins) {
+			pluginPaths.set(p.name, p.path);
+		}
 
-		return Array.from(merged.values()).sort((a, b) =>
-			a.name.localeCompare(b.name)
-		);
+		for (const cmd of needsDesc) {
+			const name = cmd.name.slice(1); // strip leading /
+			const colonIdx = name.indexOf(":");
+
+			let desc: string | null = null;
+
+			if (colonIdx !== -1) {
+				// Namespaced: e.g. "posthog:search" → plugin skill
+				const prefix = name.slice(0, colonIdx);
+				const skillName = name.slice(colonIdx + 1);
+				const pluginPath = pluginPaths.get(prefix);
+				if (pluginPath) {
+					desc = await readFrontmatterDesc(
+						nodePath.join(
+							pluginPath,
+							"skills",
+							skillName,
+							"SKILL.md"
+						)
+					);
+				}
+			} else {
+				// Non-namespaced: check commands/ and skills/ in each root.
+				for (const root of searchRoots) {
+					desc = await readFrontmatterDesc(
+						nodePath.join(
+							root,
+							".claude",
+							"commands",
+							`${name}.md`
+						)
+					);
+					if (desc) break;
+					desc = await readFrontmatterDesc(
+						nodePath.join(
+							root,
+							".claude",
+							"skills",
+							name,
+							"SKILL.md"
+						)
+					);
+					if (desc) break;
+				}
+			}
+
+			if (desc) cmd.description = desc;
+		}
 	}
 
-	formatSlashCommand(command: string, args?: string): string {
-		return args ? `${command} ${args}` : command;
+	async executeSlashCommand(
+		command: string,
+		args: string
+	): Promise<SlashCommandResult> {
+		// Plugin-level actions — handled entirely in the UI, no CLI call.
+		switch (command) {
+			case "/clear":
+				return { handled: true, action: "clear" };
+			case "/help":
+				return { handled: true, action: "help" };
+		}
+
+		// Built-in commands that map to natural-language prompts.
+		// Claude Code only processes these in interactive/TTY mode, so we
+		// translate them into prompts that achieve the same result via -p.
+		const promptMap: Record<string, string> = {
+			"/compact":
+				"Please compact and summarize our conversation so far to save context.",
+			"/commit":
+				"Commit the currently staged git changes with an appropriate commit message.",
+			"/review-pr":
+				"Review the current pull request and provide detailed feedback.",
+			"/create-pr":
+				"Create a new pull request for the current branch with a clear title and description.",
+			"/review":
+				"Review the recent code changes and provide feedback.",
+			"/pr-comments":
+				"Review the GitHub pull request comments in context and address them.",
+			"/cost":
+				"Show the token usage and cost for this session so far.",
+			"/init":
+				"Initialize a CLAUDE.md project configuration file for this project.",
+		};
+
+		const mapped = promptMap[command];
+		if (mapped) {
+			const prompt = args ? `${mapped} ${args}` : mapped;
+			return { handled: true, prompt };
+		}
+
+		// Unrecognized built-in — not handled, caller sends as-is.
+		return { handled: false };
 	}
+}
+
+/**
+ * Read just the `description:` value from a markdown file's YAML
+ * frontmatter. Returns `null` if the file doesn't exist or has no
+ * description. Reads only the first 4KB to keep it fast.
+ */
+async function readFrontmatterDesc(
+	filePath: string
+): Promise<string | null> {
+	try {
+		const fd = await fsPromises.open(filePath, "r");
+		try {
+			const buf = Buffer.alloc(4096);
+			const { bytesRead } = await fd.read(buf, 0, 4096, 0);
+			const head = buf.toString("utf8", 0, bytesRead);
+
+			if (!head.startsWith("---")) return null;
+			const end = head.indexOf("\n---", 3);
+			if (end === -1) return null;
+			const block = head.slice(3, end);
+
+			const lines = block.split("\n");
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i].trim();
+				if (!line.startsWith("description:")) continue;
+				let val = line.slice(12).trim();
+				// Strip surrounding quotes
+				if (
+					(val.startsWith("'") && val.endsWith("'")) ||
+					(val.startsWith('"') && val.endsWith('"'))
+				) {
+					val = val.slice(1, -1);
+				}
+				// Handle multi-line YAML block scalars (`>` or `|`).
+				// Collect all subsequent indented continuation lines.
+				if (val === ">" || val === "|") {
+					const parts: string[] = [];
+					for (let j = i + 1; j < lines.length; j++) {
+						const cont = lines[j];
+						// Continuation lines are indented; a non-indented
+						// line (or a new key) ends the block.
+						if (
+							!cont.startsWith(" ") &&
+							!cont.startsWith("\t")
+						)
+							break;
+						const trimmed = cont.trim();
+						if (trimmed) parts.push(trimmed);
+					}
+					val = parts.join(" ");
+				}
+				return val || null;
+			}
+		} finally {
+			await fd.close();
+		}
+	} catch {
+		// File doesn't exist or unreadable.
+	}
+	return null;
 }

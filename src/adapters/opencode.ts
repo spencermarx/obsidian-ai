@@ -3,15 +3,12 @@ import {
 	AgentAdapter,
 	AgentMessage,
 	SlashCommand,
+	SlashCommandResult,
 	SpawnArgs,
 	VaultContext,
 } from "./types";
 import { whichBinary, execCommand } from "../utils/platform";
 import { formatContextForPrompt } from "../utils/vault-context";
-import {
-	discoverMarkdownCommands,
-	DiscoveryDir,
-} from "./slash-discovery";
 
 /**
  * Built-in slash commands shipped with the Opencode CLI. Maintained
@@ -146,34 +143,39 @@ export class OpencodeAdapter implements AgentAdapter {
 	}
 
 	getBuiltinSlashCommands(): SlashCommand[] {
-		return OPENCODE_BUILTINS.map((c) => ({ ...c, source: "builtin" }));
+		return [...OPENCODE_BUILTINS];
 	}
 
-	async getSlashCommands(cwd?: string): Promise<SlashCommand[]> {
-		const builtins = this.getBuiltinSlashCommands();
+	async getSlashCommands(): Promise<SlashCommand[]> {
+		return this.getBuiltinSlashCommands();
+	}
 
-		const dirs: DiscoveryDir[] = [
-			{ path: "~/.config/opencode/command", source: "user" },
-		];
-		if (cwd) {
-			dirs.push({
-				path: `${cwd}/.opencode/command`,
-				source: "project",
-			});
+	async discoverSlashCommands(_cwd: string): Promise<SlashCommand[] | null> {
+		return null;
+	}
+
+	async executeSlashCommand(
+		command: string,
+		args: string
+	): Promise<SlashCommandResult> {
+		switch (command) {
+			case "/clear":
+				return { handled: true, action: "clear" };
+			case "/help":
+				return { handled: true, action: "help" };
 		}
 
-		const discovered = await discoverMarkdownCommands(dirs);
+		const promptMap: Record<string, string> = {
+			"/compact":
+				"Please compact and summarize our conversation so far to save context.",
+		};
 
-		const merged = new Map<string, SlashCommand>();
-		for (const cmd of builtins) merged.set(cmd.name, cmd);
-		for (const cmd of discovered) merged.set(cmd.name, cmd);
+		const mapped = promptMap[command];
+		if (mapped) {
+			const prompt = args ? `${mapped} ${args}` : mapped;
+			return { handled: true, prompt };
+		}
 
-		return Array.from(merged.values()).sort((a, b) =>
-			a.name.localeCompare(b.name)
-		);
-	}
-
-	formatSlashCommand(command: string, args?: string): string {
-		return args ? `${command} ${args}` : command;
+		return { handled: false };
 	}
 }

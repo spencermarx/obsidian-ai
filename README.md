@@ -275,8 +275,9 @@ interface AgentAdapter {
 
   parseOutputStream(stdout: Readable): AsyncIterable<AgentMessage>;
 
-  getSlashCommands(): SlashCommand[];
-  formatSlashCommand(command: string, args?: string): string;
+  getSlashCommands(cwd?: string): Promise<SlashCommand[]>;
+  getBuiltinSlashCommands(): SlashCommand[];
+  executeSlashCommand(command: string, args: string): Promise<SlashCommandResult>;
 }
 ```
 
