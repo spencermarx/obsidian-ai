@@ -11,10 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev        # Watch mode (esbuild)
 npm run build      # TypeScript check + production esbuild bundle
+npm run lint       # ESLint (flat config, type-checked)
+npm run lint:fix   # Auto-fix fixable issues
 npm run version    # Bump version in manifest.json & versions.json
 ```
 
-No test framework is configured. No linter is configured.
+No test framework is configured.
 
 **Local development:** Symlink the repo into `<vault>/.obsidian/plugins/agentic-copilot`, run `npm run dev`, and reload Obsidian (`Cmd+R`).
 

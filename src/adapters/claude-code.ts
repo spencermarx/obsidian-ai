@@ -544,8 +544,8 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		return [...CLAUDE_CODE_BUILTINS];
 	}
 
-	async getSlashCommands(): Promise<SlashCommand[]> {
-		return this.getBuiltinSlashCommands();
+	getSlashCommands(): Promise<SlashCommand[]> {
+		return Promise.resolve(this.getBuiltinSlashCommands());
 	}
 
 	async discoverSlashCommands(
@@ -750,16 +750,16 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		}
 	}
 
-	async executeSlashCommand(
+	executeSlashCommand(
 		command: string,
 		args: string
 	): Promise<SlashCommandResult> {
 		// Plugin-level actions — handled entirely in the UI, no CLI call.
 		switch (command) {
 			case "/clear":
-				return { handled: true, action: "clear" };
+				return Promise.resolve({ handled: true, action: "clear" });
 			case "/help":
-				return { handled: true, action: "help" };
+				return Promise.resolve({ handled: true, action: "help" });
 		}
 
 		// Built-in commands that map to natural-language prompts.
@@ -787,11 +787,11 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 		const mapped = promptMap[command];
 		if (mapped) {
 			const prompt = args ? `${mapped} ${args}` : mapped;
-			return { handled: true, prompt };
+			return Promise.resolve({ handled: true, prompt });
 		}
 
 		// Unrecognized built-in — not handled, caller sends as-is.
-		return { handled: false };
+		return Promise.resolve({ handled: false });
 	}
 }
 

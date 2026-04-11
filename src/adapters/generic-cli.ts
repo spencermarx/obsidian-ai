@@ -88,10 +88,10 @@ export class GenericCliAdapter implements AgentAdapter {
 		return Promise.resolve(null);
 	}
 
-	async executeSlashCommand(
+	executeSlashCommand(
 		_command: string,
 		_args: string
 	): Promise<SlashCommandResult> {
-		return { handled: false };
+		return Promise.resolve({ handled: false });
 	}
 }

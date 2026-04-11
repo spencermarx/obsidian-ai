@@ -1,5 +1,5 @@
 import { ItemView, WorkspaceLeaf, Notice, setIcon } from "obsidian";
-import { CHAT_VIEW_TYPE } from "../constants";
+import { CHAT_VIEW_TYPE, type AgenticCopilotSettings } from "../constants";
 import {
 	AgentAdapter,
 	AgentMessage,
@@ -8,7 +8,6 @@ import {
 import { SessionManager, SessionStatus } from "../session/session-manager";
 import { ChatRenderer } from "./chat-renderer";
 import { getVaultContext } from "../utils/vault-context";
-import type { AgenticCopilotSettings } from "../constants";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";

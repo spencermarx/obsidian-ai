@@ -146,23 +146,23 @@ export class OpencodeAdapter implements AgentAdapter {
 		return [...OPENCODE_BUILTINS];
 	}
 
-	async getSlashCommands(): Promise<SlashCommand[]> {
-		return this.getBuiltinSlashCommands();
+	getSlashCommands(): Promise<SlashCommand[]> {
+		return Promise.resolve(this.getBuiltinSlashCommands());
 	}
 
-	async discoverSlashCommands(_cwd: string): Promise<SlashCommand[] | null> {
-		return null;
+	discoverSlashCommands(_cwd: string): Promise<SlashCommand[] | null> {
+		return Promise.resolve(null);
 	}
 
-	async executeSlashCommand(
+	executeSlashCommand(
 		command: string,
 		args: string
 	): Promise<SlashCommandResult> {
 		switch (command) {
 			case "/clear":
-				return { handled: true, action: "clear" };
+				return Promise.resolve({ handled: true, action: "clear" });
 			case "/help":
-				return { handled: true, action: "help" };
+				return Promise.resolve({ handled: true, action: "help" });
 		}
 
 		const promptMap: Record<string, string> = {
@@ -173,9 +173,9 @@ export class OpencodeAdapter implements AgentAdapter {
 		const mapped = promptMap[command];
 		if (mapped) {
 			const prompt = args ? `${mapped} ${args}` : mapped;
-			return { handled: true, prompt };
+			return Promise.resolve({ handled: true, prompt });
 		}
 
-		return { handled: false };
+		return Promise.resolve({ handled: false });
 	}
 }
