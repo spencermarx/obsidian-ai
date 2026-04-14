@@ -547,11 +547,15 @@ export class ChatView extends ItemView {
 
     // Input: Enter to send, Shift+Enter for newline
     this.inputEl.addEventListener("keydown", (e) => {
-      // Handle autocomplete selection
+      // Handle autocomplete selection — only query VISIBLE popups
+      // to avoid stale active items in hidden popups stealing focus.
       if (e.key === "Tab" || (e.key === "Enter" && this.isPopupVisible())) {
-        const selected =
-          this.slashPopup.querySelector(".ac-popup-item-active") ||
-          this.mentionPopup.querySelector(".ac-popup-item-active");
+        const visiblePopup = !this.slashPopup.hasClass("ac-hidden")
+          ? this.slashPopup
+          : !this.mentionPopup.hasClass("ac-hidden")
+            ? this.mentionPopup
+            : null;
+        const selected = visiblePopup?.querySelector(".ac-popup-item-active");
         if (selected) {
           e.preventDefault();
           (selected as HTMLElement).click();
@@ -1500,7 +1504,15 @@ export class ChatView extends ItemView {
       }
 
       item.addEventListener("click", () => {
-        this.inputEl.value = cmd.name + " ";
+        // Replace only the slash-command portion, preserving any
+        // text after it (e.g. @mentions, #tags, extra arguments).
+        const text = this.inputEl.value;
+        const spaceIdx = text.indexOf(" ");
+        const after = spaceIdx > 0 ? text.slice(spaceIdx) : "";
+        this.inputEl.value = cmd.name + (after || " ");
+        const newCursor = cmd.name.length + (after || " ").length;
+        this.inputEl.selectionStart = newCursor;
+        this.inputEl.selectionEnd = newCursor;
         this.inputEl.focus();
         this.hideAllPopups();
       });
