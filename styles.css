@@ -1095,7 +1095,7 @@
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
-  padding: 4px 6px 4px 10px;
+  padding: 6px 6px 6px 10px;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -1116,7 +1116,7 @@
 .ac-input-mirror {
   position: absolute;
   inset: 0;
-  padding: 6px 0;
+  padding: 0;
   font-family: var(--font-interface);
   font-size: 13px;
   line-height: 1.5;
@@ -1134,10 +1134,10 @@
   z-index: 1;
   width: 100%;
   min-width: 0;
-  min-height: 34px;
+  min-height: 20px;
   max-height: 200px;
   height: var(--ac-input-height, auto);
-  padding: 6px 0;
+  padding: 0;
   border: none;
   background: transparent;
   color: transparent;
@@ -1189,7 +1189,6 @@
   display: flex;
   gap: 2px;
   flex-shrink: 0;
-  padding-bottom: 3px;
 }
 
 /* ---- Send / Stop Buttons ---- */
