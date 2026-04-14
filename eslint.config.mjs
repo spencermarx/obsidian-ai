@@ -23,6 +23,20 @@ export default tseslint.config(
 		},
 	},
 
+	// ── Test file overrides ────────────────────────────────────────
+	{
+		files: ["tests/**/*.ts"],
+		rules: {
+			// Stubs implement async interfaces without awaiting
+			"@typescript-eslint/require-await": "off",
+			// Unused params are common in stub/mock signatures
+			"@typescript-eslint/no-unused-vars": [
+				"error",
+				{ argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+			],
+		},
+	},
+
 	// ── Source rules ────────────────────────────────────────────────
 	{
 		files: ["src/**/*.ts"],
