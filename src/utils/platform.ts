@@ -4,15 +4,15 @@ import { join } from "path";
 
 /** Detect current platform. */
 export function isWindows(): boolean {
-	return platform() === "win32";
+  return platform() === "win32";
 }
 
 /** Get the shell executable for the current platform. */
 export function getShell(): string {
-	if (isWindows()) {
-		return process.env.COMSPEC || "cmd.exe";
-	}
-	return process.env.SHELL || "/bin/sh";
+  if (isWindows()) {
+    return process.env.COMSPEC || "cmd.exe";
+  }
+  return process.env.SHELL || "/bin/sh";
 }
 
 /**
@@ -24,21 +24,21 @@ export function getShell(): string {
  * spawning work regardless of how Obsidian was launched.
  */
 export function getExpandedPath(): string {
-	const home = homedir();
-	const extra = [
-		join(home, ".local", "bin"),
-		join(home, ".npm-global", "bin"),
-		join(home, ".yarn", "bin"),
-		join(home, ".nvm", "versions", "node"),  // handled via login shell mostly
-		join(home, ".cargo", "bin"),
-		"/usr/local/bin",
-		"/opt/homebrew/bin",
-		"/opt/homebrew/sbin",
-	];
-	const current = process.env.PATH || "";
-	return [...extra, ...current.split(isWindows() ? ";" : ":")].join(
-		isWindows() ? ";" : ":"
-	);
+  const home = homedir();
+  const extra = [
+    join(home, ".local", "bin"),
+    join(home, ".npm-global", "bin"),
+    join(home, ".yarn", "bin"),
+    join(home, ".nvm", "versions", "node"), // handled via login shell mostly
+    join(home, ".cargo", "bin"),
+    "/usr/local/bin",
+    "/opt/homebrew/bin",
+    "/opt/homebrew/sbin",
+  ];
+  const current = process.env.PATH || "";
+  return [...extra, ...current.split(isWindows() ? ";" : ":")].join(
+    isWindows() ? ";" : ":",
+  );
 }
 
 /**
@@ -46,17 +46,20 @@ export function getExpandedPath(): string {
  * A login shell sources the user's profile (~/.zshrc, ~/.bashrc, etc.)
  * which sets up PATH, nvm, homebrew, and other tool managers.
  */
-function shellExecOptions(
-	overrides?: { timeout?: number; cwd?: string }
-): { timeout: number; cwd?: string; env: NodeJS.ProcessEnv; shell?: string } {
-	const shell = getShell();
-	return {
-		timeout: overrides?.timeout ?? 10000,
-		cwd: overrides?.cwd,
-		env: { ...process.env, PATH: getExpandedPath() },
-		// Use the user's login shell so rc files are sourced
-		shell: isWindows() ? undefined : shell,
-	};
+function shellExecOptions(overrides?: { timeout?: number; cwd?: string }): {
+  timeout: number;
+  cwd?: string;
+  env: NodeJS.ProcessEnv;
+  shell?: string;
+} {
+  const shell = getShell();
+  return {
+    timeout: overrides?.timeout ?? 10000,
+    cwd: overrides?.cwd,
+    env: { ...process.env, PATH: getExpandedPath() },
+    // Use the user's login shell so rc files are sourced
+    shell: isWindows() ? undefined : shell,
+  };
 }
 
 /**
@@ -64,11 +67,11 @@ function shellExecOptions(
  * This ensures the user's profile is sourced and PATH is fully populated.
  */
 function loginShellCmd(cmd: string): string {
-	if (isWindows()) return cmd;
-	const shell = getShell();
-	// Use -l (login) and -c (command) — works for bash, zsh, fish
-	const escaped = cmd.replace(/"/g, '\\"');
-	return `${shell} -l -c "${escaped}"`;
+  if (isWindows()) return cmd;
+  const shell = getShell();
+  // Use -l (login) and -c (command) — works for bash, zsh, fish
+  const escaped = cmd.replace(/"/g, '\\"');
+  return `${shell} -l -c "${escaped}"`;
 }
 
 /**
@@ -76,17 +79,21 @@ function loginShellCmd(cmd: string): string {
  * Returns the full path or null if not found.
  */
 export function whichBinary(name: string): Promise<string | null> {
-	const rawCmd = isWindows() ? `where ${name}` : `which ${name}`;
-	const cmd = loginShellCmd(rawCmd);
-	return new Promise((resolve) => {
-		exec(cmd, { timeout: 5000, env: { ...process.env, PATH: getExpandedPath() } }, (err, stdout) => {
-			if (err || !stdout.trim()) {
-				resolve(null);
-			} else {
-				resolve(stdout.trim().split("\n")[0].trim());
-			}
-		});
-	});
+  const rawCmd = isWindows() ? `where ${name}` : `which ${name}`;
+  const cmd = loginShellCmd(rawCmd);
+  return new Promise((resolve) => {
+    exec(
+      cmd,
+      { timeout: 5000, env: { ...process.env, PATH: getExpandedPath() } },
+      (err, stdout) => {
+        if (err || !stdout.trim()) {
+          resolve(null);
+        } else {
+          resolve(stdout.trim().split("\n")[0].trim());
+        }
+      },
+    );
+  });
 }
 
 /**
@@ -94,22 +101,18 @@ export function whichBinary(name: string): Promise<string | null> {
  * Rejects on non-zero exit or timeout.
  */
 export function execCommand(
-	cmd: string,
-	opts?: { timeout?: number; cwd?: string }
+  cmd: string,
+  opts?: { timeout?: number; cwd?: string },
 ): Promise<string> {
-	const wrappedCmd = loginShellCmd(cmd);
-	const execOpts = shellExecOptions(opts);
-	return new Promise((resolve, reject) => {
-		exec(
-			wrappedCmd,
-			execOpts,
-			(err, stdout, stderr) => {
-				if (err) {
-					reject(new Error(stderr || err.message));
-				} else {
-					resolve(stdout.trim());
-				}
-			}
-		);
-	});
+  const wrappedCmd = loginShellCmd(cmd);
+  const execOpts = shellExecOptions(opts);
+  return new Promise((resolve, reject) => {
+    exec(wrappedCmd, execOpts, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error(stderr || err.message));
+      } else {
+        resolve(stdout.trim());
+      }
+    });
+  });
 }

@@ -1,4 +1,4 @@
-import { AgentMessage } from "../adapters/types";
+import { type AgentMessage } from "../adapters/types";
 
 /**
  * Buffers streaming message chunks and emits complete messages.
@@ -8,115 +8,115 @@ import { AgentMessage } from "../adapters/types";
  * the thinking/text mode switches, or the stream ends.
  */
 export class MessageQueue {
-	private messages: AgentMessage[] = [];
-	private currentBuffer: string = "";
-	private currentRole: AgentMessage["role"] | null = null;
-	private currentIsThinking = false;
-	private listeners: Array<(msg: AgentMessage) => void> = [];
+  private messages: AgentMessage[] = [];
+  private currentBuffer: string = "";
+  private currentRole: AgentMessage["role"] | null = null;
+  private currentIsThinking = false;
+  private listeners: Array<(msg: AgentMessage) => void> = [];
 
-	/** Register a callback for each complete message. */
-	onMessage(callback: (msg: AgentMessage) => void): void {
-		this.listeners.push(callback);
-	}
+  /** Register a callback for each complete message. */
+  onMessage(callback: (msg: AgentMessage) => void): void {
+    this.listeners.push(callback);
+  }
 
-	/** Remove all listeners. */
-	removeAllListeners(): void {
-		this.listeners = [];
-	}
+  /** Remove all listeners. */
+  removeAllListeners(): void {
+    this.listeners = [];
+  }
 
-	private pushCount = 0;
+  private pushCount = 0;
 
-	/** Push a parsed message from the adapter's stream parser. */
-	push(message: AgentMessage): void {
-		this.pushCount++;
-		const msgIsThinking = !!message.isThinking;
+  /** Push a parsed message from the adapter's stream parser. */
+  push(message: AgentMessage): void {
+    this.pushCount++;
+    const msgIsThinking = !!message.isThinking;
 
-		// [PIPE-5] Log push calls
-		if (this.pushCount <= 5 || this.pushCount % 20 === 0) {
-			console.debug(
-				`[agentic-copilot][PIPE-5] MQ.push #${this.pushCount}: role=${message.role} thinking=${msgIsThinking} len=${message.content.length} listeners=${this.listeners.length}`
-			);
-		}
+    // [PIPE-5] Log push calls
+    if (this.pushCount <= 5 || this.pushCount % 20 === 0) {
+      console.debug(
+        `[agentic-copilot][PIPE-5] MQ.push #${this.pushCount}: role=${message.role} thinking=${msgIsThinking} len=${message.content.length} listeners=${this.listeners.length}`,
+      );
+    }
 
-		// If this is a text/thinking delta for the same role AND same
-		// thinking state, accumulate into the current buffer.
-		if (
-			message.role === "assistant" &&
-			this.currentRole === "assistant" &&
-			!message.toolUse &&
-			!message.fileEdit &&
-			msgIsThinking === this.currentIsThinking
-		) {
-			this.currentBuffer += message.content;
-			// Emit an update for the accumulated message
-			const accumulated: AgentMessage = {
-				role: "assistant",
-				content: this.currentBuffer,
-				isThinking: msgIsThinking || undefined,
-				timestamp: message.timestamp,
-			};
-			this.emit(accumulated);
-			return;
-		}
+    // If this is a text/thinking delta for the same role AND same
+    // thinking state, accumulate into the current buffer.
+    if (
+      message.role === "assistant" &&
+      this.currentRole === "assistant" &&
+      !message.toolUse &&
+      !message.fileEdit &&
+      msgIsThinking === this.currentIsThinking
+    ) {
+      this.currentBuffer += message.content;
+      // Emit an update for the accumulated message
+      const accumulated: AgentMessage = {
+        role: "assistant",
+        content: this.currentBuffer,
+        isThinking: msgIsThinking || undefined,
+        timestamp: message.timestamp,
+      };
+      this.emit(accumulated);
+      return;
+    }
 
-		// Flush any buffered text before switching roles or thinking state
-		this.flush();
+    // Flush any buffered text before switching roles or thinking state
+    this.flush();
 
-		// Tool use and file edit messages are emitted immediately
-		if (message.toolUse || message.fileEdit || message.role !== "assistant") {
-			this.messages.push(message);
-			this.emit(message);
-			return;
-		}
+    // Tool use and file edit messages are emitted immediately
+    if (message.toolUse || message.fileEdit || message.role !== "assistant") {
+      this.messages.push(message);
+      this.emit(message);
+      return;
+    }
 
-		// Start a new assistant buffer
-		this.currentRole = "assistant";
-		this.currentIsThinking = msgIsThinking;
-		this.currentBuffer = message.content;
-		this.emit(message);
-	}
+    // Start a new assistant buffer
+    this.currentRole = "assistant";
+    this.currentIsThinking = msgIsThinking;
+    this.currentBuffer = message.content;
+    this.emit(message);
+  }
 
-	/** Flush any remaining buffered content. */
-	flush(): void {
-		if (this.currentBuffer && this.currentRole) {
-			const msg: AgentMessage = {
-				role: this.currentRole,
-				content: this.currentBuffer,
-				isThinking: this.currentIsThinking || undefined,
-				timestamp: Date.now(),
-			};
-			this.messages.push(msg);
-			this.currentBuffer = "";
-			this.currentRole = null;
-			this.currentIsThinking = false;
-		}
-	}
+  /** Flush any remaining buffered content. */
+  flush(): void {
+    if (this.currentBuffer && this.currentRole) {
+      const msg: AgentMessage = {
+        role: this.currentRole,
+        content: this.currentBuffer,
+        isThinking: this.currentIsThinking || undefined,
+        timestamp: Date.now(),
+      };
+      this.messages.push(msg);
+      this.currentBuffer = "";
+      this.currentRole = null;
+      this.currentIsThinking = false;
+    }
+  }
 
-	/** Get the full message history. */
-	getMessages(): AgentMessage[] {
-		const result = [...this.messages];
-		if (this.currentBuffer && this.currentRole) {
-			result.push({
-				role: this.currentRole,
-				content: this.currentBuffer,
-				isThinking: this.currentIsThinking || undefined,
-				timestamp: Date.now(),
-			});
-		}
-		return result;
-	}
+  /** Get the full message history. */
+  getMessages(): AgentMessage[] {
+    const result = [...this.messages];
+    if (this.currentBuffer && this.currentRole) {
+      result.push({
+        role: this.currentRole,
+        content: this.currentBuffer,
+        isThinking: this.currentIsThinking || undefined,
+        timestamp: Date.now(),
+      });
+    }
+    return result;
+  }
 
-	/** Clear all messages. */
-	clear(): void {
-		this.messages = [];
-		this.currentBuffer = "";
-		this.currentRole = null;
-		this.currentIsThinking = false;
-	}
+  /** Clear all messages. */
+  clear(): void {
+    this.messages = [];
+    this.currentBuffer = "";
+    this.currentRole = null;
+    this.currentIsThinking = false;
+  }
 
-	private emit(message: AgentMessage): void {
-		for (const listener of this.listeners) {
-			listener(message);
-		}
-	}
+  private emit(message: AgentMessage): void {
+    for (const listener of this.listeners) {
+      listener(message);
+    }
+  }
 }

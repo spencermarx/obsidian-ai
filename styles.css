@@ -22,32 +22,34 @@
    ============================================================ */
 
 /* ---- Utility ---- */
-.ac-hidden { display: none !important; }
+.ac-hidden {
+  display: none !important;
+}
 
 /* ---- Reset ---- */
 .ac-chat-container,
 .ac-chat-container *,
 .ac-onboarding,
 .ac-onboarding * {
-	box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 /* Kill Obsidian's default button chrome everywhere inside the plugin */
 .ac-chat-container button,
 .ac-onboarding button {
-	appearance: none;
-	-webkit-appearance: none;
-	background: none;
-	border: none;
-	outline: none;
-	box-shadow: none;
-	padding: 0;
-	margin: 0;
-	font-family: inherit;
-	font-size: inherit;
-	color: inherit;
-	cursor: pointer;
-	line-height: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+  line-height: inherit;
 }
 
 /* ---- Chat Container ---- */
@@ -59,157 +61,162 @@
  * padding Obsidian injects so our flex layout fills the leaf exactly.
  */
 .view-content:has(> .ac-chat-container) {
-	overflow: hidden;
-	padding: 0;
+  overflow: hidden;
+  padding: 0;
 }
 
 .ac-chat-container {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	width: 100%;
-	min-width: 0;
-	overflow: hidden;
-	background: var(--background-primary);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--background-primary);
 }
 
 /* ---- Header ---- */
 .ac-chat-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 10px 16px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	background: var(--background-primary);
-	flex-shrink: 0;
-	min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  flex-shrink: 0;
+  min-height: 44px;
 }
 
 .ac-status {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ac-status-dot {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	flex-shrink: 0;
-	transition: background-color 0.3s ease;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
 }
 
 .ac-status-idle {
-	background-color: var(--text-faint);
+  background-color: var(--text-faint);
 }
 
 .ac-status-running {
-	background-color: #10b981;
-	box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
-	animation: ac-pulse 1.5s ease-in-out infinite;
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+  animation: ac-pulse 1.5s ease-in-out infinite;
 }
 
 .ac-status-error {
-	background-color: var(--text-error);
+  background-color: var(--text-error);
 }
 
 .ac-status-terminated {
-	background-color: var(--text-faint);
+  background-color: var(--text-faint);
 }
 
 .ac-status-text {
-	font-size: 12px;
-	color: var(--text-muted);
-	font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 @keyframes ac-pulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* Header: session chip — ghost style, minimal */
 .ac-session-chip {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	padding: 3px 8px;
-	border-radius: 6px;
-	background: transparent;
-	border: none;
-	cursor: pointer;
-	transition: background 0.15s ease;
-	flex-shrink: 0;
-	user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .ac-session-chip:hover {
-	background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
 }
 
 .ac-chat-container .ac-session-chip-copied {
-	background: transparent;
+  background: transparent;
 }
 
 .ac-session-chip-terminal {
-	display: flex;
-	align-items: center;
-	color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  color: var(--text-faint);
 }
 
 .ac-session-chip-terminal svg {
-	width: 12px;
-	height: 12px;
+  width: 12px;
+  height: 12px;
 }
 
 .ac-session-chip-id {
-	font-family: var(--font-monospace);
-	font-size: 10px;
-	color: var(--text-faint);
-	letter-spacing: 0.3px;
+  font-family: var(--font-monospace);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.3px;
 }
 
 .ac-session-chip:hover .ac-session-chip-id {
-	color: var(--text-muted);
+  color: var(--text-muted);
 }
 
 .ac-session-chip-copy {
-	display: flex;
-	align-items: center;
-	color: var(--text-faint);
-	opacity: 0;
-	transition: opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
 .ac-session-chip:hover .ac-session-chip-copy {
-	opacity: 1;
+  opacity: 1;
 }
 
 .ac-session-chip-copy svg {
-	width: 10px;
-	height: 10px;
+  width: 10px;
+  height: 10px;
 }
 
 .ac-session-chip-copied .ac-session-chip-copy {
-	opacity: 1;
-	color: var(--text-success, #10b981);
+  opacity: 1;
+  color: var(--text-success, #10b981);
 }
 
 .ac-session-chip-copied .ac-session-chip-id {
-	color: var(--text-success, #10b981);
+  color: var(--text-success, #10b981);
 }
 
 /* ---- Messages Area ---- */
 .ac-messages {
-	flex: 1 1 0%;
-	overflow-y: auto;
-	overflow-x: hidden;
-	padding: 12px 10px;
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
-	min-height: 0;
+  flex: 1 1 0%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 0;
 }
 
 /* ---- Welcome Screen ---- */
@@ -217,189 +224,200 @@
 /* When the welcome screen is shown, remove messages padding so .ac-welcome
    can stretch via flex:1 and justify-content:center vertically centres it. */
 .ac-messages:has(.ac-welcome) {
-	padding: 0;
+  padding: 0;
 }
 
 .ac-welcome {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	color: var(--text-muted);
-	min-width: 0;
-	flex: 1 0 0%;
-	overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  min-width: 0;
+  flex: 1 0 0%;
+  overflow: hidden;
 }
 
 .ac-welcome-header {
-	flex-shrink: 0;
-	text-align: center;
-	padding: 24px 24px 0;
+  flex-shrink: 0;
+  text-align: center;
+  padding: 24px 24px 0;
 }
 
 .ac-welcome-header h3 {
-	margin: 0 0 4px 0;
-	color: var(--text-normal);
-	font-size: 15px;
-	font-weight: 700;
-	letter-spacing: -0.01em;
+  margin: 0 0 4px 0;
+  color: var(--text-normal);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .ac-welcome-header p {
-	margin: 0 0 20px 0;
-	font-size: 12.5px;
-	color: var(--text-faint);
-	max-width: 260px;
-	line-height: 1.5;
+  margin: 0 0 20px 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  max-width: 260px;
+  line-height: 1.5;
 }
 
 .ac-welcome-commands {
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-	flex: 0 1 auto;
-	width: 100%;
-	max-width: 320px;
-	text-align: left;
-	padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 0 1 auto;
+  width: 100%;
+  max-width: 320px;
+  text-align: left;
+  padding: 0 16px;
 }
 
 .ac-welcome-commands-label {
-	flex-shrink: 0;
-	font-size: 10px;
-	color: var(--text-faint);
-	margin: 0 0 4px 0;
-	text-transform: uppercase;
-	letter-spacing: 0.8px;
-	font-weight: 600;
-	padding-left: 8px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-faint);
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+  padding-left: 8px;
 }
 
 .ac-welcome-cmd-list {
-	flex: 0 1 auto;
-	overflow-y: auto;
-	min-height: 0;
-	max-height: 50vh;
-	/* Subtle inset fade at bottom to hint scrollability */
-	mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
-	-webkit-mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
-	padding-bottom: 24px;
+  flex: 0 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  max-height: 50vh;
+  /* Subtle inset fade at bottom to hint scrollability */
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  padding-bottom: 24px;
 }
 
 .ac-welcome-cmd {
-	display: flex;
-	flex-direction: column;
-	gap: 1px;
-	padding: 6px 8px;
-	border-radius: 6px;
-	font-size: 12px;
-	cursor: pointer;
-	transition: background 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .ac-welcome-cmd:hover {
-	background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
 }
 
 .ac-welcome-cmd:active {
-	background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  background: var(
+    --background-modifier-active-hover,
+    var(--background-modifier-hover)
+  );
 }
 
 .ac-welcome-cmd-name {
-	font-family: var(--font-monospace);
-	color: var(--interactive-accent);
-	font-size: 12px;
-	font-weight: 500;
+  font-family: var(--font-monospace);
+  color: var(--interactive-accent);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .ac-welcome-cmd-desc {
-	color: var(--text-faint);
-	font-size: 11px;
-	line-height: 1.4;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ---- Skeleton Loading ---- */
 
 @keyframes ac-shimmer {
-	0% {
-		background-position: -200px 0;
-	}
-	100% {
-		background-position: 200px 0;
-	}
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
 }
 
 .ac-skeleton {
-	pointer-events: none;
+  pointer-events: none;
 }
 
 .ac-skeleton-name,
 .ac-skeleton-desc {
-	border-radius: 4px;
-	background: linear-gradient(
-		90deg,
-		var(--background-modifier-hover) 25%,
-		var(--background-modifier-border) 50%,
-		var(--background-modifier-hover) 75%
-	);
-	background-size: 400px 100%;
-	animation: ac-shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--background-modifier-hover) 25%,
+    var(--background-modifier-border) 50%,
+    var(--background-modifier-hover) 75%
+  );
+  background-size: 400px 100%;
+  animation: ac-shimmer 1.4s ease-in-out infinite;
 }
 
 .ac-skeleton-name {
-	height: 12px;
-	width: 90px;
-	margin-bottom: 3px;
+  height: 12px;
+  width: 90px;
+  margin-bottom: 3px;
 }
 
 .ac-skeleton-desc {
-	height: 10px;
-	width: 140px;
+  height: 10px;
+  width: 140px;
 }
 
 /* Popup skeleton items — horizontal layout */
 .ac-popup-item.ac-skeleton {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	gap: 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 
 .ac-popup-item.ac-skeleton .ac-skeleton-name {
-	height: 12px;
-	width: 80px;
-	margin-bottom: 0;
-	flex-shrink: 0;
+  height: 12px;
+  width: 80px;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .ac-popup-item.ac-skeleton .ac-skeleton-desc {
-	height: 10px;
-	width: 120px;
+  height: 10px;
+  width: 120px;
 }
 
 /* ---- Resume Session ---- */
 
 /* Layout — bare class is sufficient (no Obsidian overrides to beat). */
 .ac-resume-section {
-	flex-shrink: 0;
-	margin-top: 12px;
-	padding-top: 12px;
-	border-top: 1px solid var(--background-modifier-border);
-	text-align: center;
-	width: 100%;
-	max-width: 320px;
+  flex-shrink: 0;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  text-align: center;
+  width: 100%;
+  max-width: 320px;
 }
 
 .ac-resume-form {
-	display: flex;
-	gap: 6px;
-	width: 100%;
-	max-width: 280px;
-	margin: 0 auto;
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
 }
 
 /*
@@ -407,105 +425,107 @@
  * needed to beat Obsidian's default button, input, and interactive styles.
  */
 .ac-chat-container .ac-resume-link {
-	color: var(--text-faint);
-	font-size: 11px;
-	font-family: var(--font-interface);
-	transition: color 0.15s ease;
-	text-decoration: none;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-family: var(--font-interface);
+  transition: color 0.15s ease;
+  text-decoration: none;
 }
 
 .ac-chat-container .ac-resume-link:hover {
-	color: var(--text-muted);
-	text-decoration: underline;
-	text-underline-offset: 2px;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .ac-chat-container input.ac-resume-input {
-	flex: 1;
-	min-width: 0;
-	padding: 5px 10px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-primary);
-	color: var(--text-normal);
-	font-family: var(--font-monospace);
-	font-size: 11px;
-	outline: none;
-	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .ac-chat-container input.ac-resume-input:hover,
 .ac-chat-container input.ac-resume-input:focus {
-	background: var(--background-primary);
-	outline: none;
-	box-shadow: none;
+  background: var(--background-primary);
+  outline: none;
+  box-shadow: none;
 }
 
 .ac-chat-container input.ac-resume-input:focus {
-	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 1px rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.08);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.08);
 }
 
 .ac-chat-container input.ac-resume-input::placeholder {
-	color: var(--text-faint);
+  color: var(--text-faint);
 }
 
 .ac-chat-container button.ac-resume-btn {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-	border-radius: 8px;
-	padding: 5px 12px;
-	font-size: 11px;
-	font-weight: 500;
-	font-family: var(--font-interface);
-	white-space: nowrap;
-	transition: background 0.15s ease;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-interface);
+  white-space: nowrap;
+  transition: background 0.15s ease;
 }
 
 .ac-chat-container button.ac-resume-btn:hover {
-	background: var(--interactive-accent-hover);
+  background: var(--interactive-accent-hover);
 }
 
 /* ---- Message Bubbles ---- */
 .ac-message {
-	flex-shrink: 0;
-	padding: 8px 12px;
-	border-radius: 8px;
-	max-width: 100%;
-	min-width: 0;
-	overflow-wrap: break-word;
-	word-break: break-word;
-	user-select: text;
-	-webkit-user-select: text;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* -- User Message -- */
 .ac-message-user {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-	align-self: flex-end;
-	max-width: 85%;
-	border-radius: 16px 16px 4px 16px;
-	margin-top: 8px;
-	padding: 10px 14px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  align-self: flex-end;
+  max-width: 85%;
+  border-radius: 16px 16px 4px 16px;
+  margin-top: 8px;
+  padding: 10px 14px;
 }
 
 .ac-message-user .ac-message-header {
-	display: none;
+  display: none;
 }
 
 .ac-message-user .ac-message-body {
-	font-size: 13px;
+  font-size: 13px;
 }
 
 .ac-message-user .ac-message-body p {
-	margin: 0;
+  margin: 0;
 }
 
 /* Fix invisible text selection on accent-colored user bubbles */
 .ac-message-user ::selection {
-	background: rgba(255, 255, 255, 0.35);
-	color: inherit;
+  background: rgba(255, 255, 255, 0.35);
+  color: inherit;
 }
 
 /* -- Copy Button -- */
@@ -516,591 +536,674 @@
  * reads clearly over any content underneath.
  */
 .ac-message {
-	position: relative;
+  position: relative;
 }
 
 .ac-copy-btn {
-	position: absolute;
-	top: 6px;
-	right: 6px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 8px;
-	color: var(--text-muted);
-	background: var(--background-primary);
-	border: 1px solid var(--background-modifier-border);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-	opacity: 0;
-	transition: opacity 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-	cursor: pointer;
-	z-index: 1;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+  cursor: pointer;
+  z-index: 1;
 }
 
 .ac-copy-btn svg {
-	width: 13px;
-	height: 13px;
+  width: 13px;
+  height: 13px;
 }
 
 .ac-message:hover .ac-copy-btn {
-	opacity: 1;
+  opacity: 1;
 }
 
 .ac-copy-btn:hover {
-	background: var(--background-secondary);
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-	color: var(--text-normal);
+  background: var(--background-secondary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  color: var(--text-normal);
 }
 
 .ac-copy-btn-done {
-	opacity: 1 !important;
-	color: var(--text-success, #10b981);
+  opacity: 1 !important;
+  color: var(--text-success, #10b981);
 }
 
 /* User bubble: same theme button, no opacity tricks */
 .ac-message-user .ac-copy-btn {
-	color: var(--text-muted);
-	background: var(--background-primary);
-	border: 1px solid var(--background-modifier-border);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .ac-message-user .ac-copy-btn:hover {
-	background: var(--background-secondary);
-	color: var(--text-normal);
+  background: var(--background-secondary);
+  color: var(--text-normal);
 }
 
 .ac-message-user .ac-copy-btn-done {
-	color: var(--text-success, #10b981);
+  color: var(--text-success, #10b981);
 }
 
 /* -- Assistant Message -- */
 .ac-message-assistant {
-	background: transparent;
-	color: var(--text-normal);
-	align-self: flex-start;
-	padding: 6px 0;
+  background: transparent;
+  color: var(--text-normal);
+  align-self: flex-start;
+  padding: 6px 0;
 }
 
 /* -- Tool Message -- */
 .ac-message-tool {
-	background: transparent;
-	color: var(--text-normal);
-	align-self: stretch;
-	padding: 2px 0;
+  background: transparent;
+  color: var(--text-normal);
+  align-self: stretch;
+  padding: 2px 0;
 }
 
 /* -- Error Message -- */
 .ac-message-error {
-	background: transparent;
-	color: var(--text-muted);
-	align-self: flex-start;
-	border: none;
-	padding: 4px 0;
-	margin-top: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  align-self: flex-start;
+  border: none;
+  padding: 4px 0;
+  margin-top: 4px;
 }
 
 .ac-message-error .ac-message-header {
-	display: none;
+  display: none;
 }
 
 .ac-message-error .ac-message-body {
-	font-size: 12px;
-	color: var(--text-faint);
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .ac-message-error .ac-message-body p {
-	margin: 0;
+  margin: 0;
 }
 
 .ac-message-error .ac-message-body p::before {
-	content: "Error: ";
-	color: var(--text-error);
-	font-weight: 500;
+  content: "Error: ";
+  color: var(--text-error);
+  font-weight: 500;
 }
 
 .ac-message-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
 }
 
 .ac-message-role {
-	font-size: 11px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
 }
 
 .ac-message-time {
-	font-size: 10px;
-	color: var(--text-faint);
+  font-size: 10px;
+  color: var(--text-faint);
 }
 
 .ac-message-body {
-	font-size: 13px;
-	line-height: 1.6;
-	min-width: 0;
-	overflow-wrap: break-word;
-	word-break: break-word;
-	user-select: text;
-	-webkit-user-select: text;
-	cursor: text;
+  font-size: 13px;
+  line-height: 1.6;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 
 .ac-message-body p:first-child {
-	margin-top: 0;
+  margin-top: 0;
 }
 
 .ac-message-body p:last-child {
-	margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 .ac-message-body pre {
-	background: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	padding: 10px 12px;
-	overflow-x: auto;
-	white-space: pre-wrap;
-	word-break: break-all;
-	font-size: 12px;
-	margin: 8px 0;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 12px;
+  margin: 8px 0;
 }
 
 .ac-message-body code:not(pre code) {
-	background: var(--background-secondary);
-	border-radius: 4px;
-	padding: 1px 5px;
-	font-size: 12px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
 }
 
 /* ---- Thinking / Reasoning ---- */
 .ac-message-thinking {
-	background: transparent;
-	padding: 2px 0;
-	border: none;
+  background: transparent;
+  padding: 2px 0;
+  border: none;
 }
 
 .ac-thinking {
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .ac-thinking-summary {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 7px 12px;
-	cursor: pointer;
-	background: var(--background-secondary);
-	font-size: 12px;
-	user-select: none;
-	color: var(--text-muted);
-	transition: background 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  background: var(--background-secondary);
+  font-size: 12px;
+  user-select: none;
+  color: var(--text-muted);
+  transition: background 0.15s ease;
 }
 
 .ac-thinking-summary:hover {
-	background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
 }
 
 .ac-thinking-icon {
-	font-weight: 600;
-	font-size: 11px;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	color: var(--text-faint);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-faint);
 }
 
 .ac-thinking[open] .ac-thinking-icon::after {
-	content: " …";
-	animation: ac-pulse 1.5s ease-in-out infinite;
+  content: " …";
+  animation: ac-pulse 1.5s ease-in-out infinite;
 }
 
 .ac-thinking:not([open]) .ac-thinking-icon::after {
-	content: "";
+  content: "";
 }
 
 .ac-thinking-label {
-	font-size: 11px;
-	color: var(--text-faint);
+  font-size: 11px;
+  color: var(--text-faint);
 }
 
 .ac-thinking-content {
-	padding: 10px 12px;
-	border-top: 1px solid var(--background-modifier-border);
-	font-size: 12px;
-	line-height: 1.5;
-	color: var(--text-muted);
-	max-height: 300px;
-	overflow-y: auto;
+  padding: 10px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-height: 300px;
+  overflow-y: auto;
 }
 
-.ac-thinking-content p:first-child { margin-top: 0; }
-.ac-thinking-content p:last-child { margin-bottom: 0; }
-.ac-thinking-content .ac-message-body { font-size: 12px; color: var(--text-muted); }
+.ac-thinking-content p:first-child {
+  margin-top: 0;
+}
+.ac-thinking-content p:last-child {
+  margin-bottom: 0;
+}
+.ac-thinking-content .ac-message-body {
+  font-size: 12px;
+  color: var(--text-muted);
+}
 
 /* ---- Tool Use (Collapsible — legacy) ---- */
 .ac-tool-use {
-	margin: 2px 0;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	overflow: hidden;
+  margin: 2px 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .ac-tool-summary {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 7px 12px;
-	cursor: pointer;
-	background: var(--background-secondary);
-	font-size: 12px;
-	user-select: none;
-	transition: background 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  background: var(--background-secondary);
+  font-size: 12px;
+  user-select: none;
+  transition: background 0.15s ease;
 }
 
 .ac-tool-summary:hover {
-	background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
 }
 
-.ac-tool-icon { font-size: 13px; opacity: 0.7; }
+.ac-tool-icon {
+  font-size: 13px;
+  opacity: 0.7;
+}
 
 .ac-tool-name {
-	font-family: var(--font-monospace);
-	font-weight: 500;
-	font-size: 12px;
-	color: var(--interactive-accent);
-	overflow-wrap: break-word;
-	word-break: break-all;
-	min-width: 0;
+  font-family: var(--font-monospace);
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--interactive-accent);
+  overflow-wrap: break-word;
+  word-break: break-all;
+  min-width: 0;
 }
 
 .ac-tool-content {
-	padding: 10px 12px;
-	border-top: 1px solid var(--background-modifier-border);
+  padding: 10px 12px;
+  border-top: 1px solid var(--background-modifier-border);
 }
 
-.ac-tool-section { margin-bottom: 8px; }
-.ac-tool-section:last-child { margin-bottom: 0; }
-.ac-tool-section strong { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
-.ac-tool-section pre { margin: 4px 0 0 0; font-size: 11px; white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
+.ac-tool-section {
+  margin-bottom: 8px;
+}
+.ac-tool-section:last-child {
+  margin-bottom: 0;
+}
+.ac-tool-section strong {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.ac-tool-section pre {
+  margin: 4px 0 0 0;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+}
 
 /* ---- Tool Calls (persistent collapsible — matches thinking blocks) ---- */
 .ac-tool-call {
-	flex-shrink: 0;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	overflow: hidden;
-	margin: 2px 0;
+  flex-shrink: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 2px 0;
 }
 
 .ac-tool-call-summary {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 5px 10px;
-	cursor: pointer;
-	background: var(--background-secondary);
-	font-size: 11px;
-	user-select: none;
-	color: var(--text-muted);
-	transition: background 0.15s ease;
-	list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  background: var(--background-secondary);
+  font-size: 11px;
+  user-select: none;
+  color: var(--text-muted);
+  transition: background 0.15s ease;
+  list-style: none;
 }
 
-.ac-tool-call-summary::-webkit-details-marker { display: none; }
+.ac-tool-call-summary::-webkit-details-marker {
+  display: none;
+}
 
 .ac-tool-call-summary:hover {
-	background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
 }
 
 .ac-tool-call-icon {
-	display: flex;
-	align-items: center;
-	flex-shrink: 0;
-	color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-faint);
 }
 
 .ac-tool-call-icon svg {
-	width: 12px;
-	height: 12px;
+  width: 12px;
+  height: 12px;
 }
 
 .ac-tool-call-name {
-	font-weight: 500;
-	font-size: 11px;
-	color: var(--text-muted);
-	flex-shrink: 0;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .ac-tool-call-desc {
-	color: var(--text-faint);
-	font-family: var(--font-monospace);
-	font-size: 11px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* Hide the content area entirely when empty */
 .ac-tool-call-content:empty {
-	display: none;
+  display: none;
 }
 
 .ac-tool-call-content {
-	padding: 10px 12px;
-	border-top: 1px solid var(--background-modifier-border);
-	font-size: 11px;
-	max-height: 200px;
-	overflow-y: auto;
-	background: var(--background-primary);
+  padding: 10px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: 11px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--background-primary);
 }
 
 .ac-tool-call-content pre {
-	margin: 0;
-	padding: 8px 10px;
-	font-size: 11px;
-	line-height: 1.5;
-	white-space: pre-wrap;
-	word-break: break-all;
-	background: var(--background-secondary);
-	border-radius: 6px;
-	color: var(--text-muted);
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  color: var(--text-muted);
 }
 
 .ac-tool-call-content pre + pre {
-	margin-top: 6px;
+  margin-top: 6px;
 }
 
 .ac-tool-call-content code {
-	font-family: var(--font-monospace);
-	font-size: 11px;
+  font-family: var(--font-monospace);
+  font-size: 11px;
 }
 
 /* ---- File Edit Blocks ---- */
 .ac-file-edit {
-	margin: 2px 0;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	overflow: hidden;
+  margin: 2px 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .ac-file-edit-header {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 5px 10px;
-	background: var(--background-secondary);
-	font-size: 11px;
-	min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--background-secondary);
+  font-size: 11px;
+  min-width: 0;
 }
 
 .ac-file-edit-icon {
-	display: flex;
-	align-items: center;
-	flex-shrink: 0;
-	color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-faint);
 }
 
 .ac-file-edit-icon svg {
-	width: 12px;
-	height: 12px;
+  width: 12px;
+  height: 12px;
 }
 
 .ac-file-edit-path {
-	font-family: var(--font-monospace);
-	font-weight: 500;
-	font-size: 11px;
-	color: var(--text-muted);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
+  font-family: var(--font-monospace);
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .ac-file-edit-diff {
-	max-height: 160px;
-	overflow: auto;
-	border-top: 1px solid var(--background-modifier-border);
-	padding: 6px 10px;
+  max-height: 160px;
+  overflow: auto;
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 6px 10px;
 }
 
 .ac-diff {
-	margin: 0;
-	padding: 0;
-	font-size: 11px;
-	line-height: 1.5;
-	background: transparent;
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  background: transparent;
 }
 
 .ac-diff-removed,
 .ac-diff-added {
-	padding: 1px 8px;
-	border-left: 2px solid transparent;
+  padding: 1px 8px;
+  border-left: 2px solid transparent;
 }
 
 .ac-diff-removed {
-	border-left-color: var(--text-error);
-	color: var(--text-error);
+  border-left-color: var(--text-error);
+  color: var(--text-error);
 }
 
 .ac-diff-added {
-	border-left-color: var(--text-success, #10b981);
-	color: var(--text-success, #10b981);
+  border-left-color: var(--text-success, #10b981);
+  color: var(--text-success, #10b981);
 }
 
 .ac-diff-new {
-	padding: 0;
+  padding: 0;
 }
 
 .ac-diff-new pre {
-	margin: 0;
-	font-size: 11px;
-	line-height: 1.5;
-	padding: 2px 8px;
-	border-left: 2px solid var(--text-success, #10b981);
-	color: var(--text-normal);
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 2px 8px;
+  border-left: 2px solid var(--text-success, #10b981);
+  color: var(--text-normal);
 }
 
 .ac-file-edit-actions {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 4px 10px;
-	border-top: 1px solid var(--background-modifier-border);
-	background: var(--background-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
 }
 
 .ac-file-edit-accepted {
-	border-color: var(--background-modifier-border);
+  border-color: var(--background-modifier-border);
 }
 
-.ac-file-edit-rejected { opacity: 0.5; }
+.ac-file-edit-rejected {
+  opacity: 0.5;
+}
 
 .ac-file-edit-status {
-	font-size: 10px;
-	font-weight: 500;
-	color: var(--text-faint);
-	text-transform: uppercase;
-	letter-spacing: 0.3px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 /* ---- Inline Activity Indicator ---- */
 .ac-activity-inline {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 4px 0;
-	align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  align-self: flex-start;
 }
 
 .ac-activity-spinner {
-	display: block;
-	width: 10px;
-	height: 10px;
-	flex-shrink: 0;
-	border-radius: 50%;
-	border: 1.5px solid transparent;
-	border-top-color: var(--text-faint);
-	border-right-color: var(--text-faint);
-	animation: ac-spin 0.7s linear infinite;
+  display: block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: var(--text-faint);
+  border-right-color: var(--text-faint);
+  animation: ac-spin 0.7s linear infinite;
 }
 
 @keyframes ac-spin {
-	to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ac-activity-text {
-	font-size: 11.5px;
-	color: var(--text-faint);
-	font-weight: 400;
-	letter-spacing: 0.01em;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 /* ---- Input Area ---- */
 .ac-input-area {
-	display: flex;
-	flex-direction: column;
-	padding: 8px 0 10px 0;
-	background: var(--background-primary);
-	flex-shrink: 0;
-	gap: 6px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 10px 0;
+  background: var(--background-primary);
+  flex-shrink: 0;
+  gap: 6px;
 }
 
 .ac-input-wrap {
-	display: flex;
-	gap: 4px;
-	align-items: flex-end;
-	background: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	padding: 4px 6px 4px 10px;
-	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 4px 6px 4px 10px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .ac-input-wrap:focus-within {
-	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.06);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.06);
 }
 
-/* Scoped to container to beat Obsidian's textarea defaults */
+/* ---- Input + highlight mirror ---- */
+.ac-input-container {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.ac-input-mirror {
+  position: absolute;
+  inset: 0;
+  padding: 6px 0;
+  font-family: var(--font-interface);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow: hidden;
+  color: var(--text-normal);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .ac-chat-container textarea.ac-input {
-	flex: 1;
-	min-width: 0;
-	min-height: 34px;
-	max-height: 200px;
-	height: var(--ac-input-height, auto);
-	padding: 6px 0;
-	border: none;
-	background: transparent;
-	color: var(--text-normal);
-	font-family: var(--font-interface);
-	font-size: 13px;
-	resize: none;
-	outline: none;
-	box-shadow: none;
-	line-height: 1.5;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  max-height: 200px;
+  height: var(--ac-input-height, auto);
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  box-shadow: none;
+  line-height: 1.5;
 }
 
 .ac-chat-container textarea.ac-input:hover,
 .ac-chat-container textarea.ac-input:focus,
 .ac-chat-container textarea.ac-input:active {
-	background: transparent;
-	border: none;
-	outline: none;
-	box-shadow: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
 }
 
 .ac-chat-container textarea.ac-input::placeholder {
-	color: var(--text-faint);
+  color: var(--text-faint);
+}
+
+/* ---- Inline highlights (background-only, no padding) ---- */
+.ac-hl {
+  background: transparent;
+  color: inherit;
+  border-radius: 3px;
+}
+
+.ac-hl-cmd {
+  background: rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.12);
+  color: var(--interactive-accent);
+}
+
+.ac-hl-file {
+  background: var(--background-modifier-hover);
+  color: var(--text-accent);
+}
+
+.ac-hl-tag {
+  background: var(--tag-background, var(--background-modifier-hover));
+  color: var(--tag-color, var(--text-accent));
 }
 
 .ac-btn-group {
-	display: flex;
-	gap: 2px;
-	flex-shrink: 0;
-	padding-bottom: 3px;
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  padding-bottom: 3px;
 }
 
 /* ---- Send / Stop Buttons ---- */
 .ac-btn-send,
 .ac-btn-stop {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 8px;
-	cursor: pointer;
-	transition: all 0.15s ease;
-	flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 /* Override Obsidian's .clickable-icon styles (except copy buttons) */
@@ -1108,443 +1211,498 @@
 .ac-chat-container .clickable-icon:not(.ac-copy-btn):hover,
 .ac-chat-container .clickable-icon:not(.ac-copy-btn):active,
 .ac-chat-container .clickable-icon:not(.ac-copy-btn):focus {
-	background: transparent;
-	border: none;
-	outline: none;
-	box-shadow: none;
-	opacity: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  opacity: 1;
 }
 
 .ac-chat-container .ac-btn-send {
-	background: transparent;
-	color: var(--text-muted);
+  background: transparent;
+  color: var(--text-muted);
 }
 
 .ac-chat-container .ac-btn-send:hover {
-	background: var(--background-modifier-hover);
-	color: var(--text-normal);
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 .ac-chat-container .ac-btn-send.ac-btn-send-active {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
 }
 
 .ac-chat-container .ac-btn-send.ac-btn-send-active:hover {
-	background: var(--interactive-accent-hover);
+  background: var(--interactive-accent-hover);
 }
 
 .ac-btn-send svg {
-	width: 14px;
-	height: 14px;
+  width: 14px;
+  height: 14px;
 }
 
 .ac-btn-stop {
-	background: var(--text-error);
-	color: white;
+  background: var(--text-error);
+  color: white;
 }
 
 .ac-btn-stop:hover {
-	opacity: 0.9;
+  opacity: 0.9;
 }
 
 .ac-btn-stop svg {
-	width: 13px;
-	height: 13px;
+  width: 13px;
+  height: 13px;
 }
 
 /* ---- Toolbar (below input) ---- */
 .ac-toolbar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0;
-	min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  min-height: 24px;
 }
 
 .ac-toolbar-item {
-	display: flex;
-	align-items: center;
-	gap: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ac-toolbar-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--text-faint);
-	/* Match the toggle button height for vertical alignment */
-	height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  /* Match the toggle button height for vertical alignment */
+  height: 22px;
 }
 
 /* Force Obsidian's setIcon SVGs to our size */
 /* Force Obsidian's setIcon SVGs to our size — scoped to toolbar */
 .ac-chat-container .ac-toolbar-icon svg {
-	width: 16px;
-	height: 16px;
-	stroke-width: 1.5px;
-	opacity: 0.45;
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.5px;
+  opacity: 0.45;
 }
 
 .ac-chat-container .ac-toolbar-toggle {
-	border-radius: 4px;
-	padding: 3px 6px;
-	font-size: 13px;
-	color: var(--text-faint);
-	font-family: var(--font-interface);
-	transition: all 0.15s ease;
-	white-space: nowrap;
-	line-height: 1;
-	height: 22px;
-	display: flex;
-	align-items: center;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 13px;
+  color: var(--text-faint);
+  font-family: var(--font-interface);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  line-height: 1;
+  height: 22px;
+  display: flex;
+  align-items: center;
 }
 
 .ac-toolbar-toggle:hover {
-	color: var(--text-muted);
-	background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  background: var(--background-modifier-hover);
 }
 
 .ac-toolbar-toggle-auto {
-	color: var(--interactive-accent);
-	opacity: 0.8;
+  color: var(--interactive-accent);
+  opacity: 0.8;
 }
 
 .ac-toolbar-toggle-auto:hover {
-	color: var(--interactive-accent);
-	opacity: 1;
-	background: transparent;
+  color: var(--interactive-accent);
+  opacity: 1;
+  background: transparent;
 }
 
 .ac-toolbar-hints {
-	display: flex;
-	align-items: center;
-	gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .ac-toolbar-hint {
-	font-size: 10px;
-	color: var(--text-faint);
-	font-family: var(--font-monospace);
-	opacity: 0.7;
+  font-size: 10px;
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+  opacity: 0.7;
 }
 
 /* ---- Image Previews ---- */
 .ac-image-previews {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	padding: 4px 6px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 6px 0;
 }
 
 .ac-image-thumb {
-	position: relative;
-	width: 56px;
-	height: 56px;
-	border-radius: 8px;
-	overflow: visible;
-	border: 1px solid var(--background-modifier-border);
-	flex-shrink: 0;
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: visible;
+  border: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
 }
 
 .ac-image-thumb-img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	display: block;
-	border-radius: inherit;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
 }
 
-.ac-image-thumb-remove {
-	position: absolute;
-	top: -2px;
-	right: -2px;
-	width: 22px;
-	height: 22px;
-	border-radius: 50%;
-	background: rgba(0, 0, 0, 0.65);
-	color: rgba(255, 255, 255, 0.9);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	opacity: 0.75;
-	transition: opacity 0.15s ease, background 0.15s ease;
-	cursor: pointer;
-	/* Extend clickable area beyond visual bounds */
-	padding: 4px;
-	box-sizing: content-box;
-	margin: -4px;
+/* Override Obsidian's .clickable-icon reset and ensure our styles win */
+.ac-image-thumb > .ac-image-thumb-remove.clickable-icon,
+.ac-image-thumb-remove.ac-image-thumb-remove {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--text-normal);
+  color: var(--background-primary);
+  border: 1px solid var(--background-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+  cursor: pointer;
+  z-index: 1;
+  line-height: 1;
 }
 
-.ac-image-thumb-remove svg {
-	width: 14px;
-	height: 14px;
+.ac-image-thumb-remove.ac-image-thumb-remove svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2.5px;
 }
 
-.ac-image-thumb:hover .ac-image-thumb-remove {
-	opacity: 1;
+.ac-image-thumb:hover > .ac-image-thumb-remove.clickable-icon,
+.ac-image-thumb:hover > .ac-image-thumb-remove.ac-image-thumb-remove {
+  opacity: 1;
 }
 
-.ac-image-thumb-remove:hover {
-	background: rgba(220, 50, 50, 0.85);
-	color: white;
+.ac-image-thumb > .ac-image-thumb-remove.clickable-icon:hover,
+.ac-image-thumb-remove.ac-image-thumb-remove:hover {
+  background: var(--text-error);
+  color: var(--text-on-accent);
+  border-color: var(--text-error);
+  transform: scale(1.2);
 }
 
-/* Drop target highlight */
-.ac-input-area.ac-drop-active {
-	position: relative;
+/* Drop target highlight — full-panel overlay so nothing bleeds through */
+.ac-drop-active {
+  position: relative;
 }
 
-.ac-input-area.ac-drop-active::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border: 2px dashed var(--interactive-accent);
-	border-radius: 12px;
-	background: rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.06);
-	pointer-events: none;
-	z-index: 10;
+.ac-drop-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--interactive-accent-rgb, 99, 102, 241), 0.08);
+  border: 2px dashed var(--interactive-accent);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.ac-drop-active .ac-input-wrap {
+  border-color: var(--interactive-accent);
 }
 
 /* ---- Buttons (accept/reject) ---- */
 .ac-btn {
-	border-radius: 8px;
-	font-size: 12px;
-	font-weight: 500;
-	transition: all 0.15s ease;
-	white-space: nowrap;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .ac-chat-container .ac-btn-accept {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-	font-size: 12px;
-	padding: 5px 12px;
-	border-radius: 6px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 6px;
 }
 
 .ac-chat-container .ac-btn-accept:hover {
-	background: var(--interactive-accent-hover);
+  background: var(--interactive-accent-hover);
 }
 
 .ac-chat-container .ac-btn-reject {
-	background: var(--background-modifier-border);
-	color: var(--text-muted);
-	font-size: 12px;
-	padding: 5px 12px;
-	border-radius: 6px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 6px;
 }
 
 .ac-chat-container .ac-btn-reject:hover {
-	background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
 }
 
 /* ---- Autocomplete Popups (slash / @ / #) ---- */
 .ac-slash-popup,
 .ac-mention-popup {
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-primary);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
-	max-height: 200px;
-	overflow-y: auto;
-	margin: 0 12px 4px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0 12px 4px 12px;
 }
 
 .ac-popup-item {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 12px;
-	cursor: pointer;
-	font-size: 12px;
-	transition: background 0.1s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.1s ease;
 }
 
-.ac-popup-item:first-child { border-radius: 8px 8px 0 0; }
-.ac-popup-item:last-child { border-radius: 0 0 8px 8px; }
-.ac-popup-item:first-child:last-child { border-radius: 8px; }
+.ac-popup-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+.ac-popup-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+.ac-popup-item:first-child:last-child {
+  border-radius: 8px;
+}
 
 .ac-popup-item:hover,
 .ac-popup-item-active {
-	background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
 }
 
 .ac-popup-item-icon {
-	display: flex;
-	align-items: center;
-	color: var(--text-faint);
-	flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--text-faint);
+  flex-shrink: 0;
 }
 
 .ac-popup-item-icon svg {
-	width: 13px;
-	height: 13px;
+  width: 13px;
+  height: 13px;
 }
 
 .ac-popup-item-text {
-	font-family: var(--font-interface);
-	font-size: 12px;
-	font-weight: 500;
-	color: var(--text-normal);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
-	flex-shrink: 0;
+  font-family: var(--font-interface);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .ac-popup-item-desc {
-	color: var(--text-faint);
-	font-size: 11px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* ---- Onboarding ---- */
 .ac-onboarding {
-	padding: 24px;
-	padding-bottom: 48px;
-	overflow-y: auto;
-	overflow-x: hidden;
-	overflow-wrap: break-word;
-	word-break: break-word;
-	min-width: 0;
+  padding: 24px;
+  padding-bottom: 48px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
 }
 
-.ac-onboarding h2 { margin-top: 0; }
+.ac-onboarding h2 {
+  margin-top: 0;
+}
 
 .ac-agent-list {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-	margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
 }
 
 .ac-agent-card {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 14px 18px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
-	transition: border-color 0.15s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+  transition: border-color 0.15s ease;
 }
 
-.ac-agent-card:hover { border-color: var(--interactive-accent); }
-.ac-agent-info h3 { margin: 0 0 4px 0; font-size: var(--font-ui-medium); }
-.ac-agent-version { font-size: var(--font-ui-small); color: var(--text-muted); }
+.ac-agent-card:hover {
+  border-color: var(--interactive-accent);
+}
+.ac-agent-info h3 {
+  margin: 0 0 4px 0;
+  font-size: var(--font-ui-medium);
+}
+.ac-agent-version {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
 
 .ac-agent-path {
-	font-size: 11px;
-	color: var(--text-faint);
-	display: block;
-	margin-top: 2px;
-	word-break: break-all;
+  font-size: 11px;
+  color: var(--text-faint);
+  display: block;
+  margin-top: 2px;
+  word-break: break-all;
 }
 
 .ac-install-list {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 16px 0;
 }
 
 .ac-install-item {
-	padding: 14px 18px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
+  padding: 14px 18px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
 }
 
-.ac-install-item h3 { margin: 0 0 4px 0; }
-.ac-install-item p { margin: 0 0 8px 0; font-size: var(--font-ui-small); color: var(--text-muted); }
+.ac-install-item h3 {
+  margin: 0 0 4px 0;
+}
+.ac-install-item p {
+  margin: 0 0 8px 0;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
 
 .ac-install-item pre {
-	margin: 0;
-	padding: 10px 12px;
-	border-radius: 8px;
-	background: var(--background-primary);
-	overflow-x: auto;
-	white-space: pre-wrap;
-	word-break: break-all;
-	font-size: 12px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--background-primary);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 12px;
 }
 
 .ac-install-note {
-	font-size: var(--font-ui-small);
-	color: var(--text-muted);
-	font-style: italic;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .ac-chat-container .ac-btn-primary,
 .ac-onboarding .ac-btn-primary {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-	padding: 6px 14px;
-	border-radius: 8px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  padding: 6px 14px;
+  border-radius: 8px;
 }
 
 .ac-chat-container .ac-btn-primary:hover,
 .ac-onboarding .ac-btn-primary:hover {
-	background: var(--interactive-accent-hover);
+  background: var(--interactive-accent-hover);
 }
 
 /* ---- Settings ---- */
 .ac-detected-agent {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
 }
 
-.ac-detected-name { font-weight: 500; }
-.ac-detected-version { color: var(--text-muted); font-size: var(--font-ui-small); }
-.ac-detected-path { font-size: 11px; color: var(--text-faint); }
+.ac-detected-name {
+  font-weight: 500;
+}
+.ac-detected-version {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.ac-detected-path {
+  font-size: 11px;
+  color: var(--text-faint);
+}
 
 /* ---- Scrollbar ---- */
-.ac-messages::-webkit-scrollbar { width: 6px; }
-.ac-messages::-webkit-scrollbar-track { background: transparent; }
-.ac-messages::-webkit-scrollbar-thumb { background: var(--background-modifier-border); border-radius: 3px; }
-.ac-messages::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+.ac-messages::-webkit-scrollbar {
+  width: 6px;
+}
+.ac-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ac-messages::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+}
+.ac-messages::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
 
 /* ---- Image Thumbnails in User Messages ---- */
 .ac-user-image-grid {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-	margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .ac-user-image-thumb {
-	width: 56px;
-	height: 56px;
-	border-radius: 8px;
-	overflow: hidden;
-	flex-shrink: 0;
-	background: rgba(255, 255, 255, 0.1);
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .ac-user-image-thumb img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .ac-user-image-thumb-error {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 9px;
-	color: var(--text-on-accent);
-	opacity: 0.7;
-	text-align: center;
-	padding: 4px;
-	word-break: break-all;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--text-on-accent);
+  opacity: 0.7;
+  text-align: center;
+  padding: 4px;
+  word-break: break-all;
 }
-
-
