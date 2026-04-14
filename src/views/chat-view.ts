@@ -52,6 +52,7 @@ export class ChatView extends ItemView {
   // DOM elements
   private messagesContainer!: HTMLElement;
   private inputEl!: HTMLTextAreaElement;
+  private inputMirror!: HTMLElement;
   private sendBtn!: HTMLButtonElement;
   private stopBtn!: HTMLButtonElement;
   private statusEl!: HTMLElement;
@@ -282,7 +283,9 @@ export class ChatView extends ItemView {
 
     const inputWrap = this.inputArea.createDiv({ cls: "ac-input-wrap" });
 
-    this.inputEl = inputWrap.createEl("textarea", {
+    const inputContainer = inputWrap.createDiv({ cls: "ac-input-container" });
+    this.inputMirror = inputContainer.createDiv({ cls: "ac-input-mirror" });
+    this.inputEl = inputContainer.createEl("textarea", {
       cls: "ac-input",
       attr: {
         placeholder: `Message ${this.adapter.displayName}…`,
@@ -396,6 +399,7 @@ export class ChatView extends ItemView {
           this.inputEl.value = cmd.name + " ";
           this.inputEl.focus();
           this.autoResizeInput();
+          this.syncMirror();
         });
       }
     }
@@ -585,11 +589,16 @@ export class ChatView extends ItemView {
       }
     });
 
-    // Input: auto-resize + autocomplete + send button state
+    // Input: auto-resize + autocomplete + highlight mirror + send button
     this.inputEl.addEventListener("input", () => {
       this.autoResizeInput();
+      this.syncMirror();
       this.handleAutocomplete();
       this.updateSendButtonState();
+    });
+
+    this.inputEl.addEventListener("scroll", () => {
+      this.inputMirror.scrollTop = this.inputEl.scrollTop;
     });
 
     // Image paste handler
@@ -716,6 +725,7 @@ export class ChatView extends ItemView {
     // Clear input and image UI (keep temp files for the CLI to read)
     this.inputEl.value = "";
     this.autoResizeInput();
+    this.syncMirror();
     this.updateSendButtonState();
     this.hideAllPopups();
     this.resetPendingImagesUI();
@@ -1202,6 +1212,40 @@ export class ChatView extends ItemView {
     this.inputEl.setCssProps({ "--ac-input-height": h });
   }
 
+  /**
+   * Sync the highlight mirror with the textarea content.
+   * Applies colored backgrounds to /commands, @mentions, and #tags.
+   * No padding or sizing changes — only background and color.
+   */
+  private syncMirror(): void {
+    const text = this.inputEl.value;
+    if (!text) {
+      this.inputMirror.empty();
+      return;
+    }
+    let html = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // /command at start of input
+    html = html.replace(
+      /^(\/[\w:_-]+)/,
+      '<mark class="ac-hl ac-hl-cmd">$1</mark>',
+    );
+    // @file — match through .md (Obsidian vault files always end in .md)
+    html = html.replace(
+      /(@[^@#]*?\.md)\b/g,
+      '<mark class="ac-hl ac-hl-file">$1</mark>',
+    );
+    // #tags
+    html = html.replace(
+      /(#[\w/-]+)/g,
+      '<mark class="ac-hl ac-hl-tag">$1</mark>',
+    );
+    this.inputMirror.innerHTML = html + "\n";
+  }
+
   private updateSendButtonState(): void {
     if (this.inputEl.value.trim() || this.pendingImages.length > 0) {
       this.sendBtn.addClass("ac-btn-send-active");
@@ -1484,6 +1528,7 @@ export class ChatView extends ItemView {
     this.inputEl.focus();
     this.hideAllPopups();
     this.autoResizeInput();
+    this.syncMirror();
   }
 
   private showSlashPopup(commands: SlashCommand[]): void {
@@ -1515,6 +1560,7 @@ export class ChatView extends ItemView {
         this.inputEl.selectionEnd = newCursor;
         this.inputEl.focus();
         this.hideAllPopups();
+        this.syncMirror();
       });
     }
     const first = this.slashPopup.querySelector(".ac-popup-item");
