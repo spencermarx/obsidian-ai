@@ -1219,31 +1219,48 @@ export class ChatView extends ItemView {
    */
   private syncMirror(): void {
     const text = this.inputEl.value;
-    if (!text) {
-      this.inputMirror.empty();
-      return;
-    }
-    let html = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    this.inputMirror.empty();
+    if (!text) return;
 
-    // /command at start of input
-    html = html.replace(
-      /^(\/[\w:_-]+)/,
-      '<mark class="ac-hl ac-hl-cmd">$1</mark>',
-    );
-    // @file — match through .md (Obsidian vault files always end in .md)
-    html = html.replace(
-      /(@[^@#]*?\.md)\b/g,
-      '<mark class="ac-hl ac-hl-file">$1</mark>',
-    );
-    // #tags
-    html = html.replace(
-      /(#[\w/-]+)/g,
-      '<mark class="ac-hl ac-hl-tag">$1</mark>',
-    );
-    this.inputMirror.innerHTML = html + "\n";
+    // Build a combined regex that matches all highlight-worthy tokens.
+    // Capture groups: (1) /command at start, (2) @file.md, (3) #tag
+    const pattern = /(^\/[\w:_-]+)|(@[^@#]*?\.md\b)|(#[\w/-]+)/g;
+
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      // Append plain text before this match
+      if (match.index > lastIndex) {
+        this.inputMirror.appendChild(
+          document.createTextNode(text.slice(lastIndex, match.index)),
+        );
+      }
+
+      // Determine which group matched and create a styled <mark>
+      const cls = match[1]
+        ? "ac-hl ac-hl-cmd"
+        : match[2]
+          ? "ac-hl ac-hl-file"
+          : "ac-hl ac-hl-tag";
+      const mark = this.inputMirror.createEl("mark", {
+        cls,
+        text: match[0],
+      });
+      // Prevent mark from being focusable
+      mark.setAttribute("aria-hidden", "true");
+
+      lastIndex = pattern.lastIndex;
+    }
+
+    // Append any remaining plain text
+    if (lastIndex < text.length) {
+      this.inputMirror.appendChild(
+        document.createTextNode(text.slice(lastIndex)),
+      );
+    }
+
+    // Trailing newline so the mirror's height matches the textarea
+    this.inputMirror.appendChild(document.createTextNode("\n"));
   }
 
   private updateSendButtonState(): void {
