@@ -1113,6 +1113,11 @@
   min-width: 0;
 }
 
+/* Mirror must use identical word-wrap rules to the textarea.
+   Textareas use: white-space:pre-wrap + overflow-wrap:break-word
+   but word-break:normal. Adding word-break:break-word here would
+   cause mid-word breaks that the textarea doesn't make, misaligning
+   the caret from the visible text. */
 .ac-input-mirror {
   position: absolute;
   inset: 0;
@@ -1122,7 +1127,7 @@
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: break-word;
-  word-break: break-word;
+  word-break: normal;
   overflow: hidden;
   color: var(--text-normal);
   pointer-events: none;
