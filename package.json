@@ -1,6 +1,6 @@
 {
 	"name": "agentic-copilot",
-	"version": "1.5.1",
+	"version": "1.5.2",
 	"description": "Integrate agentic CLI tools (Claude Code, Opencode, Gemini CLI) as a workspace copilot with streaming chat, vault-aware context, and edit diffs.",
 	"main": "main.js",
 	"scripts": {
