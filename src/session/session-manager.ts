@@ -8,7 +8,6 @@ import {
 } from "../adapters/types";
 import { MessageQueue } from "./message-queue";
 import {
-  getShell,
   isWindows,
   getExpandedPath,
   whichBinary,
@@ -207,7 +206,7 @@ export class SessionManager {
         env: expandedEnv,
         // NO shell: true — it word-splits the prompt, breaking everything.
         // We resolve the full binary path above via whichBinary() instead.
-        shell: isWindows() ? getShell() : false,
+        shell: false,
         stdio: ["pipe", "pipe", "pipe"],
         // Detach on Unix so we get a process group we can kill
         // as a unit (prevents orphaned agent processes).

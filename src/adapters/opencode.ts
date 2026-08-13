@@ -32,8 +32,8 @@ const OPENCODE_BUILTINS: SlashCommand[] = [
 /**
  * Adapter for Opencode CLI.
  *
- * Uses `opencode -p` for headless one-shot prompts.
- * Output is plain text (or JSON with -f json) from stdout.
+ * Uses `opencode run --format json` for headless prompts.
+ * Output is a stream of JSON events from stdout.
  */
 export class OpencodeAdapter implements AgentAdapter {
   readonly id = "opencode";
@@ -63,6 +63,8 @@ export class OpencodeAdapter implements AgentAdapter {
     prompt: string;
     context: VaultContext;
     cwd: string;
+    cliSessionId?: string;
+    resumeSession?: boolean;
     imagePaths?: string[];
   }): SpawnArgs {
     const contextStr = formatContextForPrompt(opts.context, {
@@ -81,10 +83,13 @@ export class OpencodeAdapter implements AgentAdapter {
       fullPrompt += `\n\n[Attached images — use your file-reading tool to view them]\n${listing}`;
     }
 
-    return {
-      command: this.binaryName,
-      args: ["-p", fullPrompt, "-q"],
-    };
+    const args = ["run", "--format", "json"];
+    if (opts.resumeSession && opts.cliSessionId) {
+      args.push("--session", opts.cliSessionId);
+    }
+    args.push(fullPrompt);
+
+    return { command: this.binaryName, args };
   }
 
   async *parseOutputStream(stdout: Readable): AsyncIterable<AgentMessage> {
@@ -102,30 +107,43 @@ export class OpencodeAdapter implements AgentAdapter {
         const trimmed = line.trim();
         if (!trimmed) continue;
 
-        // Attempt JSON parse for structured output
+        // OpenCode JSON mode emits lifecycle, text, and tool events.
         try {
           const obj = JSON.parse(trimmed);
           if (obj.type === "text" || obj.type === "content") {
+            const content = obj.part?.text || obj.content || obj.text || "";
+            if (!content) continue;
             yield {
               role: "assistant",
-              content: obj.content || obj.text || "",
+              content,
+              cliSessionId: obj.sessionID || obj.sessionId,
               timestamp: Date.now(),
             };
             continue;
           }
           if (obj.type === "tool_call" || obj.type === "tool_use") {
+            const part = obj.part || {};
+            const state = part.state || {};
+            const name = part.tool || obj.name || "unknown";
+            const input = state.input || obj.input || {};
+            const output = state.output || obj.output;
             yield {
               role: "tool",
-              content: `Tool: ${obj.name || "unknown"}`,
+              content: `Tool: ${name}`,
               toolUse: {
-                name: obj.name || "unknown",
-                input: JSON.stringify(obj.input || {}),
-                output: obj.output ? JSON.stringify(obj.output) : undefined,
+                name,
+                input: JSON.stringify(input),
+                output: output ? JSON.stringify(output) : undefined,
               },
+              cliSessionId:
+                obj.sessionID || obj.sessionId || part.sessionID,
               timestamp: Date.now(),
             };
             continue;
           }
+
+          // Lifecycle events such as step_start and step_finish are not chat text.
+          continue;
         } catch {
           // Not JSON — treat as plain text
         }
