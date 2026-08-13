@@ -9,7 +9,7 @@ describe("OpencodeAdapter", () => {
   const adapter = new OpencodeAdapter();
 
   describe("spawning", () => {
-    it("invokes the opencode binary in quiet pipe mode", () => {
+    it("invokes opencode run with JSON output", () => {
       const { command, args } = adapter.buildSpawnArgs({
         prompt: "hello",
         context: vault,
@@ -17,8 +17,21 @@ describe("OpencodeAdapter", () => {
       });
 
       expect(command).toBe("opencode");
-      expect(args).toContain("-q");
+      expect(args.slice(0, 3)).toEqual(["run", "--format", "json"]);
       expect(args.some((a) => a.includes("hello"))).toBe(true);
+    });
+
+    it("resumes an initialized OpenCode session", () => {
+      const { args } = adapter.buildSpawnArgs({
+        prompt: "continue",
+        context: vault,
+        cwd: "/vault",
+        cliSessionId: "ses_example",
+        resumeSession: true,
+      });
+
+      expect(args).toContain("--session");
+      expect(args).toContain("ses_example");
     });
 
     it("embeds image paths in prompt when images are attached", () => {
@@ -52,11 +65,15 @@ describe("OpencodeAdapter", () => {
       expect(msgs.some((m) => m.content === "First line")).toBe(true);
     });
 
-    it("parses JSON structured output when available", async () => {
+    it("parses text from OpenCode JSON events", async () => {
       const stream = new Readable({
         read() {
           this.push(
-            JSON.stringify({ type: "text", content: "structured" }) + "\n",
+            JSON.stringify({
+              type: "text",
+              sessionID: "ses_example",
+              part: { type: "text", text: "structured" },
+            }) + "\n",
           );
           this.push(null);
         },
@@ -68,6 +85,57 @@ describe("OpencodeAdapter", () => {
       }
 
       expect(msgs[0].content).toBe("structured");
+      expect(msgs[0].cliSessionId).toBe("ses_example");
+    });
+
+    it("ignores OpenCode lifecycle events", async () => {
+      const stream = Readable.from(
+        [
+          { type: "step_start", sessionID: "ses_example" },
+          {
+            type: "text",
+            sessionID: "ses_example",
+            part: { type: "text", text: "answer" },
+          },
+          { type: "step_finish", sessionID: "ses_example" },
+        ]
+          .map((event) => JSON.stringify(event))
+          .join("\n") + "\n",
+      );
+
+      const msgs = [];
+      for await (const msg of adapter.parseOutputStream(stream)) {
+        msgs.push(msg);
+      }
+
+      expect(msgs).toHaveLength(1);
+      expect(msgs[0].content).toBe("answer");
+    });
+
+    it("parses current OpenCode tool events", async () => {
+      const stream = Readable.from(
+        JSON.stringify({
+          type: "tool_use",
+          sessionID: "ses_example",
+          part: {
+            tool: "read",
+            state: {
+              input: { filePath: "/vault/note.md" },
+              output: "note contents",
+            },
+          },
+        }) + "\n",
+      );
+
+      const msgs = [];
+      for await (const msg of adapter.parseOutputStream(stream)) {
+        msgs.push(msg);
+      }
+
+      expect(msgs[0].role).toBe("tool");
+      expect(msgs[0].toolUse?.name).toBe("read");
+      expect(msgs[0].toolUse?.input).toContain("note.md");
+      expect(msgs[0].cliSessionId).toBe("ses_example");
     });
   });
 });
